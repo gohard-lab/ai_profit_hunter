@@ -73,8 +73,10 @@ def ai_summarize_and_analyze(title):
             "category": parts[0].replace('카테고리:', '').strip(),
             "report": parts[1].replace('리포트:', '').strip()
         }
-    except:
-        return {"category": "기타", "report": "분석 실패"}
+    except Exception as e:
+        print(f"AI 분석 중 진짜 에러 발생: {e}") # 에러 원인 출력
+    # except:
+    #     return {"category": "기타", "report": "분석 실패"}
 
 def post_to_telegram(message):
     url = f"https://api.telegram.org/bot{API_CONFIG['telegram_token']}/sendMessage"

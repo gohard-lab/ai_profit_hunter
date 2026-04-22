@@ -25,24 +25,33 @@ API_CONFIG = {
 supabase = create_client(API_CONFIG["supabase_url"], API_CONFIG["supabase_key"])
 
 def save_profit_data(article_data, ai_result):
-    """분석된 데이터를 Supabase에 저장합니다."""
-    data = {
-        "title": article_data['title'],
-        "category": ai_result['category'],
-        "report": ai_result['report'],
-        "url": article_data.get('url'),
-        "source": article_data.get('source', {}).get('name'),
-        "created_at": datetime.now().isoformat()
-    }
+    # ai_result가 None이면 저장을 하지 않고 넘어가도록 방어막 설치
+    if ai_result is None:
+        print("⚠️ AI 분석 결과가 없어 DB 저장을 건너뜁니다.")
+        return
     
-    # 중복 방지를 위해 upsert 사용 (title 기준)
-    response = supabase.table("profit_results").upsert(data, on_conflict="title").execute()
-    
-    # 트래커 실행 (상세 정보 JSON 포함)
-    log_app_usage("ai_profit_bot", "data_saved", details={
-        "category": ai_result['category'],
-        "source": data['source']
-    })
+    try:
+        """분석된 데이터를 Supabase에 저장합니다."""
+        data = {
+            "title": article_data['title'],
+            "category": ai_result.get('category', '기타'), # 안전하게 가져오기
+            "report": ai_result['report'],
+            "url": article_data.get('url'),
+            "source": article_data.get('source', {}).get('name'),
+            "created_at": datetime.now().isoformat()
+        }
+        
+        # 중복 방지를 위해 upsert 사용 (title 기준)
+        response = supabase.table("profit_results").upsert(data, on_conflict="title").execute()
+        
+        # 트래커 실행 (상세 정보 JSON 포함)
+        log_app_usage("ai_profit_bot", "data_saved", details={
+            "category": ai_result['category'],
+            "source": data['source']
+        })
+    except Exception as e:
+        print(f"DB 저장 중 에러: {e}")
+        
     return response
 
 def fetch_trending_news(query):

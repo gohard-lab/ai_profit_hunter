@@ -82,8 +82,8 @@ def post_to_telegram(message):
 
 def run_profit_bot():
     log_app_usage("ai_profit_bot", "engine_started")
-    # hunting_keywords = ["삼성전자"]
-    hunting_keywords = ["정치", "경제", "사회", "IT 트렌드"]
+    hunting_keywords = ["엔비디아"]
+    # hunting_keywords = ["정치", "경제", "사회", "IT 트렌드"]
     
     for target_keyword in hunting_keywords:
         print(f"🎯 타겟 검색: {target_keyword}")

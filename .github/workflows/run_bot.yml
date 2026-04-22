@@ -29,4 +29,6 @@ jobs:
           CHAT_ID: ${{ secrets.CHAT_ID }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: uv run python src/ai_profit_hunter.py
+        run: |
+             ls -R  # 1. 파일 목록 먼저 확인하고
+             uv run python src/ai_profit_hunter.py  # 2. 그다음에 진짜 코드 실행!

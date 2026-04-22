@@ -121,7 +121,6 @@ def post_to_telegram(message):
 
 def run_profit_bot():
     log_app_usage("ai_profit_bot", "engine_started")
-    # hunting_keywords = ["엔비디아"]
     hunting_keywords = ["정치", "경제", "사회", "IT 트렌드"]
     
     for target_keyword in hunting_keywords:
@@ -132,11 +131,16 @@ def run_profit_bot():
             # 1. AI 분석
             ai_result = ai_summarize_and_analyze(article['title'])
             
-            # 2. DB 저장 (추가됨)
+            # 🔥 [수정 포인트] 방어막 추가: 분석 결과가 없으면 메시지 전송 없이 다음 기사로 패스!
+            if not ai_result:
+                print(f"⏩ AI 분석 실패로 건너뜁니다: {article['title']}")
+                continue
+            
+            # 2. DB 저장
             save_profit_data(article, ai_result)
             
-            # 3. 텔레그램 전송
-            msg = f"📢 [{ai_result['category']}] {article['title']}\n\n{ai_result['report']}"
+            # 3. 텔레그램 전송 (안전하게 .get() 사용)
+            msg = f"📢 [{ai_result.get('category', '기타')}] {article['title']}\n\n{ai_result.get('report', '리포트 없음')}"
             post_to_telegram(msg)
             
             print(f"✅ 저장 및 전송 완료: {article['title'][:15]}...")

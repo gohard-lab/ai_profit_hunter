@@ -9,7 +9,7 @@ from tracker_web import log_app_usage  # 필요시 활성화
 # --- [수정 금지] 설정 정보 ---
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-WP_URL = "https://gohard.pe.kr/wp-json/wp/v2/posts"
+WP_URL = "http://gohard.pe.kr/wp-json/wp/v2/posts"
 WP_USER = "cheiri_admin"
 WP_APP_PASS = "guRY UxJp FkCJ Y2xv cXqJ iv6k"
 

@@ -14,7 +14,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # WP_URL = "http://gohard.pe.kr/wp-json/wp/v2/posts/"
 # WP_URL = "http://www.gohard.pe.kr/wp-json/wp/v2/posts/"
 # 변경할 필살기 주소 (이 방식은 리다이렉트 없이 바로 꽂힙니다)
-WP_URL = "http://gohard.pe.kr/index.php?rest_route=/wp/v2/posts/"
+# WP_URL = "http://gohard.pe.kr/index.php?rest_route=/wp/v2/posts/"
+WP_URL = "https://gohard.pe.kr/index.php?rest_route=/wp/v2/posts/"
 WP_USER = os.getenv("WP_USER")
 WP_APP_PASS = os.getenv("WP_APP_PASS")
 
@@ -80,8 +81,8 @@ def post_to_wordpress(title, content):
     }
     
     # [핵심 3] allow_redirects=True로 끝까지 추적해서 꽂아넣기
-    res = requests.post(WP_URL, json=payload, headers=headers, allow_redirects=True)
-
+    res = requests.post(WP_URL, json=payload, headers=headers, verify=False)
+    
     # res = requests.post(
     #     WP_URL,
     #     auth=HTTPBasicAuth(WP_USER, WP_APP_PASS),

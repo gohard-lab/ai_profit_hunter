@@ -1,3 +1,4 @@
+import base64
 import requests
 import markdown
 import os
@@ -60,6 +61,16 @@ def rewrite_with_gpt(original_title, original_content):
     return response.choices[0].message.content
 
 def post_to_wordpress(title, content):
+
+    # [핵심 2] 출입증(비밀번호)을 서버가 못 뺏어가게 Base64로 튼튼하게 포장
+    user_credentials = f"{WP_USER}:{WP_APP_PASS}"
+    base64_credentials = base64.b64encode(user_credentials.encode()).decode()
+
+    headers = {
+        'Authorization': f'Basic {base64_credentials}',
+        'Content-Type': 'application/json'
+    }
+
     """워드프레스에 임시 저장으로 업로드"""
     payload = {
         "title": title,
@@ -68,11 +79,14 @@ def post_to_wordpress(title, content):
         "categories": [1]
     }
     
-    res = requests.post(
-        WP_URL,
-        auth=HTTPBasicAuth(WP_USER, WP_APP_PASS),
-        json=payload
-    )
+    # [핵심 3] allow_redirects=True로 끝까지 추적해서 꽂아넣기
+    res = requests.post(WP_URL, json=payload, headers=headers, allow_redirects=True)
+
+    # res = requests.post(
+    #     WP_URL,
+    #     auth=HTTPBasicAuth(WP_USER, WP_APP_PASS),
+    #     json=payload
+    # )
     
     if res.status_code == 201:
         # log_app_usage("naver_bot", "upload_success", {"title": title})

@@ -1,8 +1,9 @@
 import requests
+import markdown
+import os
 from bs4 import BeautifulSoup
 from openai import OpenAI
 from requests.auth import HTTPBasicAuth
-import os
 from dotenv import load_dotenv
 from tracker_web import log_app_usage  # 필요시 활성화
 
@@ -84,8 +85,13 @@ if __name__ == "__main__":
         print("🤖 GPT 재가공 중 (잡학다식 개발자 버전)...")
         refined_content = rewrite_with_gpt(n_title, n_content)
         
+        print("🔄 마크다운을 HTML로 변환 중...")
+        # 마크다운을 워드프레스가 인식할 수 있는 HTML로 변환합니다. (표, 리스트 등 확장 기능 포함)
+        html_content = markdown.markdown(refined_content, extensions=['extra'])
+        
         print("📤 워드프레스 전송 중...")
-        post_to_wordpress(n_title, refined_content)
+        # 변환된 html_content를 워드프레스로 보냅니다.
+        post_to_wordpress(n_title, html_content)
         
     except Exception as e:
         print(f"❗ 에러 발생: {e}")

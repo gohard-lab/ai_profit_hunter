@@ -8,6 +8,11 @@ from dotenv import load_dotenv
 from tracker_exe import log_app_usage
 from supabase import create_client
 
+# 새로 만든 모듈들 (같은 src 폴더 내에 있어야 합니다)
+from wp_publisher import post_to_wordpress
+from news_crawler import fetch_full_content
+from ai_analyzer import generate_blog_post
+
 # .env 파일 로드 (로컬 테스트용)
 load_dotenv()
 
@@ -18,7 +23,11 @@ API_CONFIG = {
     "telegram_token": os.getenv("TELEGRAM_TOKEN"),
     "chat_id": os.getenv("CHAT_ID"),
     "supabase_url": os.getenv("SUPABASE_URL"),
-    "supabase_key": os.getenv("SUPABASE_KEY")
+    "supabase_key": os.getenv("SUPABASE_KEY"),
+    # 🔥 워드프레스 연동을 위한 환경변수 추가
+    "wp_url": os.getenv("WP_URL"), 
+    "wp_user": os.getenv("WP_USER"), 
+    "wp_app_password": os.getenv("WP_APP_PASSWORD")
 }
 
 # DB 연결
@@ -53,7 +62,7 @@ def save_profit_data(article_data, ai_result):
             "status": "success"
         })
         
-        print(f"✅ 사냥 성공 및 저장 완료: {data['title']}")
+        print(f"✅ 사냥 성공 및 DB 저장 완료: {data['title']}")
         return response
 
     except Exception as e:
@@ -106,7 +115,6 @@ def ai_summarize_and_analyze(title):
         content = result_json['choices'][0]['message']['content'].strip()
         
         # JSON 파싱 (문자열에서 JSON 추출)
-        import json
         # GPT가 가끔 ```json ... ``` 을 붙이는 경우를 대비해 정제
         content = content.replace('```json', '').replace('```', '').strip()
         return json.loads(content)
@@ -128,23 +136,62 @@ def run_profit_bot():
         articles = fetch_trending_news(target_keyword)
         
         for article in articles:
-            # 1. AI 분석
+            # 1. AI 요약 분석 (DB 저장 및 기본 보고용)
             ai_result = ai_summarize_and_analyze(article['title'])
             
-            # 🔥 [수정 포인트] 방어막 추가: 분석 결과가 없으면 메시지 전송 없이 다음 기사로 패스!
             if not ai_result:
                 print(f"⏩ AI 분석 실패로 건너뜁니다: {article['title']}")
                 continue
             
-            # 2. DB 저장
+            # 2. DB 저장 (기존 기능 유지)
             save_profit_data(article, ai_result)
             
-            # 3. 텔레그램 전송 (안전하게 .get() 사용)
-            msg = f"📢 [{ai_result.get('category', '기타')}] {article['title']}\n\n{ai_result.get('report', '리포트 없음')}"
+            # ==========================================
+            # 🔥 3. 워드프레스 자동 포스팅 프로세스 시작
+            # ==========================================
+            wp_link = None
+            # 기사 본문 긁어오기
+            full_text = fetch_full_content(article['url'])
+            
+            if full_text:
+                # SEO 블로그 포스팅 내용 생성
+                blog_html = generate_blog_post(API_CONFIG["openai_api_key"], article['title'], full_text)
+                
+                if blog_html:
+                    # 타겟 키워드에 따라 워드프레스 카테고리 지정
+                    category_name = "IT트렌드" if target_keyword in ["IT 트렌드", "IT/과학"] else "경제동향"
+                    
+                    wp_config = {
+                        "url": API_CONFIG["wp_url"],
+                        "user": API_CONFIG["wp_user"],
+                        "app_password": API_CONFIG["wp_app_password"]
+                    }
+                    
+                    # 워드프레스 서버로 발행 요청
+                    wp_link = post_to_wordpress(wp_config, article['title'], blog_html, category_name)
+                    
+                    if wp_link:
+                        # 트래커에 블로그 발행 기록 남기기
+                        log_app_usage("ai_profit_hunter", "blog_published", details={
+                            "title": article['title'],
+                            "category": category_name,
+                            "url": wp_link
+                        })
+            
+            # ==========================================
+            # 4. 텔레그램 전송 (상황에 맞게 메시지 변경)
+            # ==========================================
+            if wp_link:
+                # 블로그 발행에 성공했을 때
+                msg = f"📢 [워드프레스 발행 성공!]\n[{ai_result.get('category', '기타')}] {article['title']}\n\n👉 본문 보기: {wp_link}"
+            else:
+                # 블로그 발행은 실패했거나 건너뛰었지만 요약은 성공했을 때 (기존 방식)
+                msg = f"📢 [{ai_result.get('category', '기타')}] {article['title']}\n\n{ai_result.get('report', '리포트 없음')}"
+            
             post_to_telegram(msg)
             
-            print(f"✅ 저장 및 전송 완료: {article['title'][:15]}...")
-            time.sleep(2) # API 과부하 방지
+            print(f"✅ 전체 공정 완료: {article['title'][:15]}...")
+            time.sleep(3) # API 및 워드프레스 서버 과부하 방지
 
 if __name__ == "__main__":
     run_profit_bot()

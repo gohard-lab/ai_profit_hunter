@@ -11,7 +11,9 @@ from tracker_web import log_app_usage  # 필요시 활성화
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # WP_URL = "http://gohard.pe.kr/wp-json/wp/v2/posts/"
-WP_URL = "http://www.gohard.pe.kr/wp-json/wp/v2/posts/"
+# WP_URL = "http://www.gohard.pe.kr/wp-json/wp/v2/posts/"
+# 변경할 필살기 주소 (이 방식은 리다이렉트 없이 바로 꽂힙니다)
+WP_URL = "http://gohard.pe.kr/index.php?rest_route=/wp/v2/posts/"
 WP_USER = os.getenv("WP_USER")
 WP_APP_PASS = os.getenv("WP_APP_PASS")
 

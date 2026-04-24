@@ -135,7 +135,6 @@ def fetch_news_by_topic(topic_info):
                     
                     # 🚨 여전히 구글 중간 경유지에 갇혀 있다면?
                     if "google.com" in real_url:
-                        import urllib.parse
                         parsed = urllib.parse.urlparse(real_url)
                         qs = urllib.parse.parse_qs(parsed.query)
                         

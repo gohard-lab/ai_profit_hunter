@@ -120,29 +120,39 @@ def fetch_news_by_topic(topic_info):
             res = requests.get(link, headers=headers, cookies=cookies, timeout=10)
             real_url = res.url  
             
-            # 2. 여전히 구글 페이지에 갇혔다면, <a> 태그만 정밀 타격하여 진짜 주소를 찾습니다.
+            # 2. 여전히 구글 페이지에 갇혔다면, 자동 이동 태그와 구글 특수 속성을 정밀 타격합니다.
             if "google.com" in real_url:
                 soup = BeautifulSoup(res.text, "html.parser")
+                import re
                 
-                # HTML 구조 안에서 실제로 클릭 가능한 링크(a 태그)만 찾습니다.
-                for a_tag in soup.find_all("a"):
-                    href = a_tag.get("href", "")
-                    
-                    # http로 시작하지 않는 상대 경로나 자바스크립트 동작은 무시
-                    if not href.startswith("http"):
-                        continue
+                # 패턴 A: <meta http-equiv="refresh"> 자동 이동 태그 탐색 (가장 유력한 구글의 우회 방식)
+                meta_refresh = soup.find("meta", attrs={"http-equiv": lambda x: x and x.lower() == "refresh"})
+                if meta_refresh:
+                    match = re.search(r'url=(.+)', meta_refresh.get("content", ""), re.IGNORECASE)
+                    if match:
+                        real_url = match.group(1).strip("'\" ")
                         
-                    parsed_url = urllib.parse.urlparse(href)
-                    domain = parsed_url.netloc.lower()
-                    
-                    # 1차 방어: 구글 관련 및 시스템/프레임워크 도메인 차단
-                    forbidden_words = ["google", "gstatic", "youtube", "w3.org", "schema.org", "angular.dev", "purl.org"]
-                    if any(bad in domain for bad in forbidden_words):
-                        continue
+                # 패턴 B: 구글 뉴스 특유의 숨겨진 링크 속성 (data-n-href) 탐색
+                if "google.com" in real_url:
+                    hidden_tag = soup.find(attrs={"data-n-href": True})
+                    if hidden_tag:
+                        real_url = hidden_tag["data-n-href"]
                         
-                    # 방어막을 통과한 첫 번째 실제 하이퍼링크가 진짜 언론사 주소!
-                    real_url = href
-                    break
+                # 패턴 C: 실제 클릭 가능한 a 태그 탐색 (기존 로직 보강 방어)
+                if "google.com" in real_url:
+                    for a_tag in soup.find_all("a"):
+                        href = a_tag.get("href", "")
+                        if not href.startswith("http"):
+                            continue
+                            
+                        parsed_url = urllib.parse.urlparse(href)
+                        domain = parsed_url.netloc.lower()
+                        
+                        # 구글 및 시스템 도메인 차단
+                        forbidden_words = ["google", "gstatic", "youtube", "w3.org", "schema.org", "angular.dev", "purl.org"]
+                        if not any(bad in domain for bad in forbidden_words):
+                            real_url = href
+                            break
             
             # 3. 그래도 못 찾았다면 비정상 링크 처리
             if "google.com" in real_url:

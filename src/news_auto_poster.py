@@ -271,7 +271,13 @@ if __name__ == "__main__":
             search_query = topic_info[0]['query']
         else:
             search_query = topic_info['query']
-            
+
+        # 🛠️ 추가: 구글식 OR 쿼리를 네이버 입맛에 맞게 쪼개서 하나만 랜덤 선택!
+        if " OR " in search_query:
+            # " OR " 기준으로 쪼개고, 쌍따옴표 제거 후 랜덤 뽑기
+            keywords = [k.replace('"', '').strip() for k in search_query.split(" OR ")]
+            search_query = random.choice(keywords)
+                
         n_title, n_content, n_link, n_image_url = fetch_news_by_topic(topic_name, search_query)
         
         if not n_title:

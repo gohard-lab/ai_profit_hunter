@@ -145,7 +145,8 @@ def fetch_news_by_topic(topic_name, search_query):
             content = article.text.strip()[:1500]
             if len(content) > 100:
                 print("   ✅ 추출 성공!")
-                # return title, content, real_url, article.top_image (기존 리턴 로직 유지)
+                return title, content, real_url, article.top_image
+            
         except Exception as e:
             print(f"   ㄴ ⚠️ 추출 실패: {e}")
             
@@ -277,7 +278,7 @@ if __name__ == "__main__":
             # " OR " 기준으로 쪼개고, 쌍따옴표 제거 후 랜덤 뽑기
             keywords = [k.replace('"', '').strip() for k in search_query.split(" OR ")]
             search_query = random.choice(keywords)
-                
+
         n_title, n_content, n_link, n_image_url = fetch_news_by_topic(topic_name, search_query)
         
         if not n_title:

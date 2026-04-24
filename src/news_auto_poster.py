@@ -56,8 +56,29 @@ TOPIC_CONFIG = {
         "cat_id": [5],    # IT 뉴스 브리핑 카테고리 ID
         "tag_ids": [104], # it-tech-trends 태그 ID
         "prompt": "IT/과학 트렌드를 분석하는 잡학다식 개발자로서, 이 기술이 실무에 미칠 영향을 명확하게 정리해 줘."
-    }
+    },
+    # 🌍 글로벌 스포츠 및 국내 주요 리그 종합
+    "글로벌_스포츠": [{"query": '"F1" OR "WEC" OR "해외축구" OR "프리미어리그" OR "챔피언스리그" OR "메이저리그" OR "MLB" OR "NBA" OR "테니스" OR "그랜드슬램" OR "프로배구" OR "V리그" OR "UFC"'}],
+    
+    # 🎬 할리우드/유럽 영화, 팝스타 가십 및 글로벌 엔터 트렌드
+    "해외_엔터이슈": [{"query": '"할리우드" OR "해외연예" OR "팝스타" OR "빌보드" OR "아카데미 시상식" OR "칸 영화제" OR "넷플릭스 오리지널" OR "해외 가십"'}],
+
+    # 🇰🇷 국내 주요 스포츠 및 K-엔터 (필요시 분리 사용)
+    "국내_스포츠": [{"query": '"KBO" OR "프로야구" OR "K리그" OR "국가대표" OR "KBL" OR "한국시리즈"'}],
+    "국내_연예": [{"query": '"K팝" OR "아이돌" OR "국내 개봉작" OR "드라마 시청률" OR "천만 영화"'}]
 }
+
+# RSS_FEEDS = {
+#     # (기존 F1, IT 등 유지...)
+#     "스포츠": [
+#         "https://rss.donga.com/sports.xml",  # 스포츠동아
+#         "https://www.chosun.com/arc/outboundfeeds/rss/category/sports/?outputType=xml" # 스포츠조선
+#     ],
+#     "연예_엔터": [
+#         "https://rss.donga.com/ent.xml",     # 동아일보 연예
+#         "https://www.chosun.com/arc/outboundfeeds/rss/category/entertainments/?outputType=xml" # 조선일보 연예
+#     ]
+# }
 
 def is_already_posted(link):
     """Supabase usage_logs 테이블을 조회하여 중복 기사인지 확인합니다."""

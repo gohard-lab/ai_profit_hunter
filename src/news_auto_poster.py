@@ -120,18 +120,26 @@ def fetch_news_by_topic(topic_info):
             res = requests.get(link, headers=headers, cookies=cookies, timeout=10)
             real_url = res.url  
             
-            # 2. 여전히 구글 페이지에 갇혔다면, 소스코드 전체를 뒤져 진짜 주소를 강제 추출합니다.
+            # 2. 여전히 구글 페이지에 갇혔다면, 진짜 주소를 강제 추출합니다.
             if "google.com" in real_url:
-                # 차단할 구글 관련 도메인 리스트
-                forbidden_domains = ["google.com", "google.co.kr", "googleusercontent", "gstatic.com", "youtube.com"]
                 all_urls = re.findall(r'(https?://[^\s"\'<>]+)', res.text)
                 
                 for u in all_urls:
-                    # 링크에서 도메인 부분만 분리해서 검사합니다.
-                    parsed_domain = urllib.parse.urlparse(u).netloc.lower()
-                    if parsed_domain and not any(bad in parsed_domain for bad in forbidden_domains):
-                        real_url = u
-                        break # 구글이 아닌 진짜 언론사 도메인이면 채택
+                    parsed_url = urllib.parse.urlparse(u)
+                    domain = parsed_url.netloc.lower()
+                    path = parsed_url.path.lower()
+                    
+                    # 1차 방어: 도메인에 google, gstatic, youtube가 포함되면 무조건 패스
+                    if "google" in domain or "gstatic" in domain or "youtube" in domain:
+                        continue
+                        
+                    # 2차 방어: 스크립트(.js), 스타일(.css), 이미지 파일이면 패스
+                    if path.endswith(('.js', '.css', '.png', '.jpg', '.gif', '.ico', '.json')):
+                        continue
+                        
+                    # 방어막을 모두 통과한 링크가 진짜 언론사 주소!
+                    real_url = u
+                    break
             
             # 3. 그래도 못 찾았다면 비정상 링크 처리
             if "google.com" in real_url:

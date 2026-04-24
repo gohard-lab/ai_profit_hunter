@@ -347,5 +347,7 @@ if __name__ == "__main__":
             print(f"❗ [{topic_name}] 실행 중 에러 발생: {e}")
             continue # 에러가 나도 다음 토픽은 계속 진행
 
-    print(f"\n{"="*50}")
+    # print(f"\n{"="*50}")
+    print(f"\n{'='*50}")
+
     print("🏁 모든 카테고리 포스팅 작업이 종료되었습니다.")

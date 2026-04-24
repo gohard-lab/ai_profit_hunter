@@ -118,18 +118,39 @@ def fetch_news_by_topic(topic_info):
                 context = browser.new_context(
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 )
-                # 구글 개인정보 동의 화면(로봇 방어막) 프리패스 쿠키
                 context.add_cookies([{"name": "CONSENT", "value": "YES+cb.20210720-07-p0.en+FX+410", "domain": ".google.com", "path": "/"}])
                 page = context.new_page()
                 
                 try:
                     # 구글 뉴스 링크 접속
                     page.goto(link, timeout=15000)
-                    page.wait_for_load_state("domcontentloaded")
                     
-                    # 자바스크립트가 서버와 통신하여 진짜 언론사로 튕겨낼 수 있도록 2.5초 대기
-                    page.wait_for_timeout(2500) 
+                    # 브라우저의 네트워크 통신이 완전히 조용해질 때까지(이동이 끝날 때까지) 대기
+                    try:
+                        page.wait_for_load_state("networkidle", timeout=6000)
+                    except:
+                        pass # 타임아웃이 나도 멈추지 않고 계속 진행
+                        
                     real_url = page.url
+                    
+                    # 🚨 여전히 구글 중간 경유지에 갇혀 있다면?
+                    if "google.com" in real_url:
+                        import urllib.parse
+                        parsed = urllib.parse.urlparse(real_url)
+                        qs = urllib.parse.parse_qs(parsed.query)
+                        
+                        # 1. 주소창 파라미터(url= 또는 q=)에 진짜 주소가 숨어있는 경우
+                        if 'url' in qs:
+                            real_url = qs['url'][0]
+                        elif 'q' in qs:
+                            real_url = qs['q'][0]
+                        else:
+                            # 2. 화면에 렌더링된 "이동하기" 하이퍼링크를 강제로 찾아내기
+                            links = page.evaluate("() => Array.from(document.querySelectorAll('a')).map(a => a.href)")
+                            for href in links:
+                                if href.startswith("http") and not any(bad in href.lower() for bad in ["google", "gstatic", "youtube", "w3.org", "schema.org"]):
+                                    real_url = href
+                                    break
                 except Exception as e:
                     pass
                 finally:

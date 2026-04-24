@@ -101,29 +101,34 @@ def fetch_news_by_topic(topic_info):
         title = entry.title
         link = entry.link
         
-        # 🚨 여기에 진단용 엑스레이 2번 추가
-        print(f"👉 본문 추출 시도 중: {title[:40]}...")
+        print(f"👉 본문 추출 시도 중: {title[:40]}...") 
         
         if is_already_posted(link):
-            print(f"⏭️ 건너뜀 (이미 포스팅됨): {title}")
             continue
             
         try:
-            # newspaper3k 객체 생성 및 추출
-            article = Article(link, language='ko')
+            # 1. 구글 우회 링크를 뚫고 진짜 언론사 최종 URL을 알아냅니다.
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            res = requests.get(link, headers=headers, timeout=10)
+            real_url = res.url  # 최종 도착한 진짜 언론사 주소
+            
+            # 2. 알아낸 진짜 주소를 newspaper에 전달합니다.
+            article = Article(real_url, language='ko')
             article.download()
             article.parse()
             
             content = article.text.strip()[:1500]
-            image_url = article.top_image  # 대표 이미지 자동 추출
+            image_url = article.top_image
             
-            # 본문이 정상적으로 추출된 경우에만 반환
+            # 3. 본문이 제대로 추출됐는지 확인
             if len(content) > 100: 
-                return title, content, link, image_url
+                return title, content, real_url, image_url
+            else:
+                print(f"   ㄴ ⚠️ 텍스트 부족 스킵 (길이: {len(content)}자)")
                 
         except Exception as e:
-            print(f"⚠️ 기사 추출 실패 ({link[:50]}...): {e}")
-            continue # 실패하면 다음 기사로 넘어감
+            print(f"   ㄴ ⚠️ 접속 또는 추출 실패: {e}")
+            continue
             
     return None, None, None, None
 

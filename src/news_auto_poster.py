@@ -4,6 +4,8 @@ import markdown
 import os
 import random
 import urllib.parse
+import feedparser
+from newspaper import Article
 from bs4 import BeautifulSoup
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -85,35 +87,39 @@ def is_already_posted(link):
         return False
 
 def fetch_news_by_topic(topic_info):
-    """네이버 검색(최신순)을 통해 특정 주제의 뉴스를 수집합니다."""
+    """구글 뉴스 RSS를 검색하고 newspaper3k로 본문과 이미지를 스마트하게 추출합니다."""
     encoded_query = urllib.parse.quote(topic_info["query"])
-    search_url = f"https://search.naver.com/search.naver?where=news&query={encoded_query}&sort=1"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    # 구글 뉴스 한국어 RSS 링크
+    rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
     
-    res = requests.get(search_url, headers=headers)
-    soup = BeautifulSoup(res.text, "html.parser")
-    news_items = soup.select(".news_tit")
+    feed = feedparser.parse(rss_url)
     
-    for item in news_items:
-        title = item.text.strip()
-        link = item['href']
+    for entry in feed.entries:
+        title = entry.title
+        link = entry.link
         
-        # 상세 본문 추출을 위해 네이버 자체 서비스 기사만 필터링
-        if "news.naver.com" not in link:
-            continue
-            
         if is_already_posted(link):
             print(f"⏭️ 건너뜀 (이미 포스팅됨): {title}")
             continue
             
-        detail_res = requests.get(link, headers=headers)
-        detail_soup = BeautifulSoup(detail_res.text, "html.parser")
-        article_body = detail_soup.select_one("#newsct_article")
-        
-        if article_body:
-            return title, article_body.text.strip()[:1500], link
+        try:
+            # newspaper3k 객체 생성 및 추출
+            article = Article(link, language='ko')
+            article.download()
+            article.parse()
             
-    return None, None, None
+            content = article.text.strip()[:1500]
+            image_url = article.top_image  # 대표 이미지 자동 추출
+            
+            # 본문이 정상적으로 추출된 경우에만 반환
+            if len(content) > 100: 
+                return title, content, link, image_url
+                
+        except Exception as e:
+            print(f"⚠️ 기사 추출 실패 ({link[:50]}...): {e}")
+            continue # 실패하면 다음 기사로 넘어감
+            
+    return None, None, None, None
 
 def rewrite_with_gpt(original_title, original_content, topic_prompt):
     """주제별 맞춤형 페르소나로 재작성"""
@@ -228,22 +234,21 @@ if __name__ == "__main__":
         topic_info = TOPIC_CONFIG[topic_name]
         
         log_app_usage("news_auto_poster", "bot_started", details={"action": "cron_execution", "topic": topic_name})
-        print(f"🚀 [{topic_name}] 주제로 네이버 검색 수집 중...")
+        print(f"🚀 [{topic_name}] 주제로 구글 뉴스 검색 수집 중...")
         
-        n_title, n_content, n_link = fetch_news_by_topic(topic_info)
+        n_title, n_content, n_link, n_image_url = fetch_news_by_topic(topic_info)
         
         if not n_title:
             print(f"🛑 [{topic_name}] 관련 새로운 뉴스가 없습니다. 종료합니다.")
             exit()
             
-        print("📸 대표 이미지 찾는 중...")
-        image_url = get_og_image(n_link)
         media_id = None
-        if image_url:
+        if n_image_url:
             print("📤 워드프레스에 이미지 업로드 중...")
-            media_id = upload_image_to_wp(image_url)
+            media_id = upload_image_to_wp(n_image_url)
         
         print("🤖 GPT 재가공 중 (페르소나 적용)...")
+        # GPT 재가공 함수 호출 시 topic_info["prompt"]가 추가로 들어갑니다.
         refined_content = rewrite_with_gpt(n_title, n_content, topic_info["prompt"])
         
         print("🔄 마크다운을 HTML로 변환 중...")

@@ -265,41 +265,33 @@ if __name__ == "__main__":
         topic_info = TOPIC_CONFIG[topic_name]
         
         log_app_usage("news_auto_poster", "bot_started", details={"action": "cron_execution", "topic": topic_name})
-        print(f"🚀 [{topic_name}] 주제로 구글 뉴스 검색 수집 중...")
+        print(f"🚀 [{topic_name}] 주제로 기사 수집 중...")
         
-        # 🛠️ 수정: 리스트 형태([])든 딕셔너리 형태({})든 알아서 검색어를 뽑아내도록 처리
+        # 🛠️ 통합 수정: topic_info가 리스트([])든 딕셔너리({})든 
+        # 에러 없이 안전하게 정보(info_dict)를 알맹이만 빼냅니다.
         if isinstance(topic_info, list):
-            search_query = topic_info[0]['query']
+            info_dict = topic_info[0]
         else:
-            search_query = topic_info['query']
-
-        # 🛠️ 추가: 구글식 OR 쿼리를 네이버 입맛에 맞게 쪼개서 하나만 랜덤 선택!
+            info_dict = topic_info
+            
+        # 알맹이에서 검색어와 프롬프트를 쏙 뽑아냅니다.
+        search_query = info_dict['query']
+        persona_prompt = info_dict.get('prompt', '전문가의 시선으로 차분하고 지적으로 작성해 주세요.')
+        
+        # 🛠️ 통합 수정: 구글식 OR 쿼리를 네이버용 단일 키워드로 쪼개서 하나 랜덤 선택
         if " OR " in search_query:
-            # " OR " 기준으로 쪼개고, 쌍따옴표 제거 후 랜덤 뽑기
             keywords = [k.replace('"', '').strip() for k in search_query.split(" OR ")]
             search_query = random.choice(keywords)
-
+            
+        # 1. 수집 엔진 가동 (분리된 검색어 사용)
         n_title, n_content, n_link, n_image_url = fetch_news_by_topic(topic_name, search_query)
         
         if not n_title:
             print(f"🛑 [{topic_name}] 관련 새로운 뉴스가 없습니다. 종료합니다.")
             exit()
             
-        media_id = None
-        if n_image_url:
-            print("📤 워드프레스에 이미지 업로드 중...")
-            media_id = upload_image_to_wp(n_image_url)
-        
+        # 2. GPT 재가공 
         print("🤖 GPT 재가공 중 (페르소나 적용)...")
-        # GPT 재가공 함수 호출 시 topic_info["prompt"]가 추가로 들어갑니다.
-        refined_content = rewrite_with_gpt(n_title, n_content, topic_info["prompt"])
-        
-        print("🔄 마크다운을 HTML로 변환 중...")
-        html_content = markdown.markdown(refined_content, extensions=['extra'])
-        
-        print("📤 워드프레스 전송 중...")
-        post_to_wordpress(n_title, html_content, topic_info["cat_id"], topic_info["tag_ids"], media_id, n_link)
-        
+
     except Exception as e:
-        log_app_usage("news_auto_poster", "bot_error", details={"error": str(e)})
-        print(f"❗ 에러 발생: {e}")
+        print(f"❗ 메인 실행 에러 발생: {e}")

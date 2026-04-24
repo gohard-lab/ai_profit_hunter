@@ -265,7 +265,6 @@ if __name__ == "__main__":
         topic_info = TOPIC_CONFIG[topic_name]
         
         log_app_usage("news_auto_poster", "bot_started", details={"action": "cron_execution", "topic": topic_name})
-        print(f"🚀 [{topic_name}] 주제로 기사 수집 중...")
         
         # 🛠️ 통합 수정: topic_info가 리스트([])든 딕셔너리({})든 
         # 에러 없이 안전하게 정보(info_dict)를 알맹이만 빼냅니다.
@@ -304,7 +303,8 @@ if __name__ == "__main__":
         
         if final_text:
             print("🚀 워드프레스 전송 중...")
-            post_to_wordpress(n_title, html_content, topic_info["cat_id"], topic_info["tag_ids"], media_id, n_link)
+            # post_to_wordpress(n_title, html_content, topic_info["cat_id"], topic_info["tag_ids"], media_id, n_link)
+            post_to_wordpress(n_title, html_content, info_dict["cat_id"], info_dict["tag_ids"], media_id, n_link)
 
             print("✅ 블로그 발행 완료!")
         else:

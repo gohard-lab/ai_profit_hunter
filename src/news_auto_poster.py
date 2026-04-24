@@ -5,12 +5,15 @@ import os
 import re
 import random
 import urllib.parse
+import json
 import feedparser
 from newspaper import Article
 from bs4 import BeautifulSoup
 from openai import OpenAI
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
+from news_provider import fetch_naver_news, fetch_direct_rss, RSS_FEEDS
+from tracker_exe import log_app_usage
 
 # 백그라운드 봇 환경이므로 exe용 트래커를 사용합니다.
 from tracker_exe import log_app_usage 
@@ -88,90 +91,42 @@ def is_already_posted(link):
         print(f"⚠️ DB 조회 실패: {e}")
         return False
 
-def fetch_news_by_topic(topic_info):
-    """구글 뉴스 RSS를 검색하고 newspaper3k로 본문과 이미지를 스마트하게 추출합니다."""
-    encoded_query = urllib.parse.quote(topic_info["query"])
-    # 구글 뉴스 한국어 RSS 링크
-    rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
-    
-    feed = feedparser.parse(rss_url)
+def fetch_news_by_topic(topic):
+    # 1. Supabase 트래커 기록 (json 타입 details 포함)
+    usage_details = json.dumps({
+        "category": topic,
+        "source": "naver_or_rss"
+    }, ensure_ascii=False)
+    log_app_usage("news_auto_poster_exe", f"search_{topic}", details=usage_details)
 
-    # 🚨 여기에 진단용 엑스레이 1번 추가
-    print(f"🔍 구글에서 찾아온 기사 개수: {len(feed.entries)}개")
+    print(f"🚀 [{topic}] 주제로 기사 수집 중...")
     
-    for entry in feed.entries:
-        title = entry.title
-        link = entry.link
+    # 2. 주제가 RSS 목록에 있으면 RSS 직행, 없으면 네이버 검색 API 사용
+    if topic in RSS_FEEDS:
+        news_items = []
+        for rss_url in RSS_FEEDS[topic]:
+            news_items.extend(fetch_direct_rss(rss_url))
+    else:
+        news_items = fetch_naver_news(topic)
         
-        print(f"👉 본문 추출 시도 중: {title[:40]}...") 
+    # 3. 기사 원문 추출 (구글 우회 로직 제거됨)
+    for item in news_items:
+        real_url = item['link']
+        title = item['title'].replace('<b>', '').replace('</b>', '').replace('&quot;', '"')
         
-        if is_already_posted(link):
-            continue
-            
+        print(f"👉 본문 추출 시도 중: {title[:40]}...")
+        
         try:
-            real_url = link
-            print("   ㄴ 🕵️ 구글 암호 해독 및 URL-Decoding 분석 중...")
-            
-            import re
-            import base64
-            import urllib.parse
-            import requests
-
-            # 1. Base64 바이트 직접 해독 시도
-            match = re.search(r'/articles/([a-zA-Z0-9_\-]+)', link)
-            if match:
-                encoded = match.group(1)
-                encoded += "=" * ((4 - len(encoded) % 4) % 4)
-                try:
-                    decoded_bytes = base64.urlsafe_b64decode(encoded)
-                    url_match = re.search(rb'(https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&\'()*+,;=%]+)', decoded_bytes)
-                    if url_match:
-                        extracted = url_match.group(1).decode('utf-8', errors='ignore')
-                        if "google" not in extracted.lower():
-                            real_url = extracted
-                except Exception:
-                    pass
-
-            # 2. 해독 실패 시, 소스코드 URL 디코딩(unquote) 강제 추출
-            if "google.com" in real_url:
-                headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"}
-                res = requests.get(link, headers=headers, timeout=10, allow_redirects=True)
-                
-                if "google.com" not in res.url:
-                    real_url = res.url
-                else:
-                    # 💥 핵심 포인트: 소스코드에 %3A%2F 처럼 인코딩된 문자열을 정상 주소로 변환하여 발굴
-                    unquoted_text = urllib.parse.unquote(res.text)
-                    all_urls = re.findall(r'(https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&\'()*+,;=%]+)', unquoted_text)
-                    
-                    forbidden = ["google", "gstatic", "youtube", "w3.org", "schema.org", "purl.org", "angular.dev"]
-                    for u in all_urls:
-                        if not any(bad in u.lower() for bad in forbidden):
-                            real_url = u
-                            break
-
-            if "google.com" in real_url:
-                print("   ㄴ ⚠️ 실제 언론사 주소 확보 실패. 다음으로 넘어갑니다.")
-                continue
-
-            print(f"   ㄴ 🔗 최종 도착 언론사: {real_url[:60]}...")
-            
-            # 3. 진짜 주소로 본문 추출
             article = Article(real_url, language='ko')
             article.download()
             article.parse()
             
             content = article.text.strip()[:1500]
-            image_url = article.top_image
-            
-            if len(content) > 100: 
-                return title, content, real_url, image_url
-            else:
-                print(f"   ㄴ ⚠️ 텍스트 부족 스킵 (길이: {len(content)}자)")
-                
+            if len(content) > 100:
+                print("   ✅ 추출 성공!")
+                # return title, content, real_url, article.top_image (기존 리턴 로직 유지)
         except Exception as e:
-            print(f"   ㄴ ⚠️ 접속 또는 추출 실패: {e}")
-            continue
+            print(f"   ㄴ ⚠️ 추출 실패: {e}")
             
     return None, None, None, None
 

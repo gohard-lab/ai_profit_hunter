@@ -107,12 +107,27 @@ def fetch_news_by_topic(topic_info):
             continue
             
         try:
-            # 1. 구글 우회 링크를 뚫고 진짜 언론사 최종 URL을 알아냅니다.
+            # 1. 구글 우회 링크를 뚫고 1차 접근
             headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
             res = requests.get(link, headers=headers, timeout=10)
-            real_url = res.url  # 최종 도착한 진짜 언론사 주소
+            real_url = res.url  
             
-            # 2. 알아낸 진짜 주소를 newspaper에 전달합니다.
+            # 2. 구글의 빈 껍데기 페이지에 갇혔다면 본문 안의 '진짜 주소'를 강제 추출
+            if "news.google.com" in real_url or "consent.google.com" in real_url:
+                soup = BeautifulSoup(res.text, "html.parser")
+                # 구글 리다이렉트 페이지는 보통 첫 번째 <a> 태그에 진짜 주소를 숨겨둡니다.
+                a_tag = soup.find("a")
+                if a_tag and a_tag.get("href"):
+                    real_url = a_tag.get("href")
+            
+            # 최종 도착지가 여전히 구글이면 비정상 링크로 간주하고 패스
+            if "news.google.com" in real_url:
+                print("   ㄴ ⚠️ 실제 언론사 링크 파악 불가. 다음으로 넘어갑니다.")
+                continue
+
+            print(f"   ㄴ 🔗 최종 분석 대상: {real_url[:60]}...")
+            
+            # 3. 알아낸 진짜 주소를 newspaper에 전달
             article = Article(real_url, language='ko')
             article.download()
             article.parse()
@@ -120,7 +135,7 @@ def fetch_news_by_topic(topic_info):
             content = article.text.strip()[:1500]
             image_url = article.top_image
             
-            # 3. 본문이 제대로 추출됐는지 확인
+            # 4. 본문이 제대로 추출됐는지 확인 (100자 이상)
             if len(content) > 100: 
                 return title, content, real_url, image_url
             else:

@@ -280,8 +280,8 @@ if __name__ == "__main__":
             topic_info = TOPIC_CONFIG[topic_name]
             
             log_app_usage("news_auto_poster", "topic_started", details={"topic": topic_name})
-            print(f"\n{"="*50}")
-            # print(f"\n{'='*50}")
+            # print(f"\n{"="*50}")
+            print(f"\n{'='*50}")
             print(f"🚀 [{topic_name}] 카테고리 작업 시작...")
             
             # 🛠️ 리스트/딕셔너리 구조 안전하게 알맹이(info_dict) 추출

@@ -16,35 +16,80 @@ WP_URL = "https://gohard.pe.kr/index.php?rest_route=/wp/v2/posts/"
 WP_USER = os.getenv("WP_USER")
 WP_APP_PASS = os.getenv("WP_APP_PASS")
 
+# Supabase 환경 변수 (.env에 설정되어 있어야 합니다)
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+def is_already_posted(link):
+    """Supabase usage_logs 테이블을 조회하여 중복 기사인지 확인합니다."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("⚠️ Supabase 접속 정보가 없어 중복 체크를 건너뜁니다.")
+        return False
+
+    url = f"{SUPABASE_URL}/rest/v1/usage_logs"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}"
+    }
+    
+    # app_name이 news_auto_poster이고, action이 post_success이며, 
+    # details JSONB 컬럼 안의 'link' 값이 현재 기사 링크와 동일한 레코드를 1개만 찾습니다.
+    params = {
+        "select": "id",
+        "app_name": "eq.news_auto_poster",
+        "action": "eq.post_success",
+        "details->>link": f"eq.{link}",
+        "limit": "1"
+    }
+    
+    try:
+        res = requests.get(url, headers=headers, params=params)
+        if res.status_code == 200:
+            data = res.json()
+            return len(data) > 0  # 데이터가 존재하면 이미 포스팅된 기사
+        return False
+    except Exception as e:
+        print(f"⚠️ DB 조회 실패: {e}")
+        return False
+
 def fetch_naver_news():
-    """네이버 IT/과학 뉴스 헤드라인 하나와 링크를 가져옵니다."""
-    url = "https://news.naver.com/section/105" # IT/과학 섹션
+    """네이버 IT/과학 뉴스에서 '아직 올리지 않은' 뉴스를 찾습니다."""
+    url = "https://news.naver.com/section/105"
     headers = {"User-Agent": "Mozilla/5.0"}
     res = requests.get(url, headers=headers)
     soup = BeautifulSoup(res.text, "html.parser")
     
-    # 가장 상단의 뉴스 기사 추출
-    news_item = soup.select_one(".sa_text_title")
-    title = news_item.text.strip()
-    link = news_item['href']
+    news_items = soup.select(".sa_text_title")
     
-    # 기사 본문 간단 수집
-    detail_res = requests.get(link, headers=headers)
-    detail_soup = BeautifulSoup(detail_res.text, "html.parser")
-    content = detail_soup.select_one("#newsct_article").text.strip()
-    
-    # 이미지 추출을 위해 기사 원본 링크(link)도 같이 반환합니다.
-    return title, content[:1500], link 
+    for item in news_items:
+        title = item.text.strip()
+        link = item['href']
+        
+        # Supabase DB 조회로 중복 검사
+        if is_already_posted(link):
+            print(f"⏭️ 건너뜀 (이미 포스팅됨): {title}")
+            continue
+            
+        # 새로운 뉴스를 찾았다면 상세 내용 수집
+        detail_res = requests.get(link, headers=headers)
+        detail_soup = BeautifulSoup(detail_res.text, "html.parser")
+        article_body = detail_soup.select_one("#newsct_article")
+        
+        if article_body:
+            # 기사 원문 링크(link)도 함께 반환합니다.
+            return title, article_body.text.strip()[:1500], link
+            
+    return None, None, None
 
 def rewrite_with_gpt(original_title, original_content):
-    """대표님의 '잡학다식 개발자' 페르소나로 재작성"""
+    """'잡학다식 개발자' 페르소나로 재작성"""
     prompt = f"""
     당신은 '잡학다식 개발자'라는 블로그를 운영하는 지적이고 솔직 담백한 개발자입니다.
     아래 뉴스 기사를 읽고, 독자들에게 유익한 정보를 전달하는 블로그 포스팅으로 재작성해주세요.
     
-    - 말투: 차분하고 논리적이며, 불필요한 수식어(최고, 대박 등)는 뺍니다.
+    - 말투: 차분하고 논리적이며, 불필요한 수식어는 뺍니다.
     - 형식: 마크다운(Markdown)을 사용해 가독성을 높입니다.
     - 금기: 'Tired' 같은 유치한 말장난, 오버하는 말투 절대 금지. 출처(CITE) 표기 생략.
     - 구조: 서론(이슈 소개) - 본론(핵심 분석) - 결론(개발자로서의 견해)
@@ -73,19 +118,17 @@ def get_og_image(news_url):
         return None
 
 def upload_image_to_wp(image_url):
-    """추출한 이미지를 워드프레스 미디어 라이브러리에 업로드합니다."""
+    """이미지를 워드프레스 미디어 라이브러리에 업로드합니다."""
     if not image_url:
         return None
     
     try:
-        # 1. 이미지 다운로드
         img_res = requests.get(image_url, stream=True)
         img_data = img_res.content
         filename = image_url.split("/")[-1].split("?")[0]
         if not filename.endswith(('.jpg', '.jpeg', '.png', '.gif')):
             filename = "news_thumbnail.jpg"
 
-        # 2. 워드프레스 미디어 API로 전송
         user_credentials = f"{WP_USER}:{WP_APP_PASS}"
         base64_credentials = base64.b64encode(user_credentials.encode()).decode()
         
@@ -105,8 +148,8 @@ def upload_image_to_wp(image_url):
         print(f"⚠️ 미디어 업로드 실패: {e}")
         return None
 
-def post_to_wordpress(title, content, media_id=None):
-    """재작성된 글과 업로드된 이미지를 묶어서 워드프레스에 발행합니다."""
+def post_to_wordpress(title, content, media_id=None, news_link=None):
+    """글을 발행하고, 성공 시 Supabase에 링크 정보를 포함하여 기록합니다."""
     user_credentials = f"{WP_USER}:{WP_APP_PASS}"
     base64_credentials = base64.b64encode(user_credentials.encode()).decode()
 
@@ -118,26 +161,25 @@ def post_to_wordpress(title, content, media_id=None):
     payload = {
         "title": title,
         "content": content,
-        "status": "draft", 
+        "status": "publish", 
         "categories": [1]
     }
     
-    # 미디어 ID가 존재하면 특성 이미지로 추가
     if media_id:
         payload['featured_media'] = media_id
 
     res = requests.post(WP_URL, json=payload, headers=headers, verify=False)
     
     if res.status_code == 201:
-        # 트래커: 포스팅 성공 기록 (이미지 유무 포함)
+        # 트래커: details 컬럼에 link를 저장하여 다음 조회 시 중복 검증에 사용합니다.
         log_app_usage("news_auto_poster", "post_success", details={
             "title": title,
+            "link": news_link,
             "has_image": bool(media_id),
             "status_code": 201
         })
-        print(f"✅ 성공: {title} 가 임시저장되었습니다.")
+        print(f"✅ 성공: {title} 가 발행되었습니다.")
     else:
-        # 트래커: 포스팅 실패 기록
         log_app_usage("news_auto_poster", "post_failed", details={
             "title": title,
             "error": res.text,
@@ -147,12 +189,15 @@ def post_to_wordpress(title, content, media_id=None):
 
 if __name__ == "__main__":
     try:
-        # 트래커: 봇 작동 시작 기록
         log_app_usage("news_auto_poster", "bot_started", details={"action": "cron_execution"})
         
         print("🚀 네이버 뉴스 수집 중...")
         n_title, n_content, n_link = fetch_naver_news()
         
+        if not n_title:
+            print("🛑 새로운 뉴스가 없습니다. 종료합니다.")
+            exit()
+            
         print("📸 대표 이미지 찾는 중...")
         image_url = get_og_image(n_link)
         media_id = None
@@ -167,9 +212,8 @@ if __name__ == "__main__":
         html_content = markdown.markdown(refined_content, extensions=['extra'])
         
         print("📤 워드프레스 전송 중...")
-        post_to_wordpress(n_title, html_content, media_id)
+        post_to_wordpress(n_title, html_content, media_id, n_link)
         
     except Exception as e:
-        # 트래커: 실행 중 크리티컬 에러 기록
         log_app_usage("news_auto_poster", "bot_error", details={"error": str(e)})
         print(f"❗ 에러 발생: {e}")

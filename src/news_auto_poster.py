@@ -41,9 +41,9 @@ TOPIC_CONFIG = {
         "prompt": "영화 매니아 개발자로서 아날로그 감성이 느껴지는 올드무비의 매력과 감상을 솔직 담백하게 서술해 줘."
     },
     "레트로기기": {
-        "query": '"카세트 플레이어" OR "워크맨" OR "빈티지 오디오" OR "레트로 가전" OR "LP 플레이어"',
-        "cat_id": [20],   # 기존에 넣으신 ID 유지
-        "tag_ids": [103], # 기존에 넣으신 ID 유지
+        "query": '"카세트 플레이어" OR "소니 워크맨" OR "카세트 워크맨" OR "빈티지 오디오" OR "LP 플레이어"',
+        "cat_id": [20],
+        "tag_ids": [103],
         "prompt": "클래식 카세트 수집가로서 아날로그 기기가 주는 향수와 하드웨어적 매력을 객관적으로 설명해 줘."
     },
     "IT트렌드": {
@@ -107,27 +107,31 @@ def fetch_news_by_topic(topic_info):
             continue
             
         try:
-            # 1. 구글 우회 링크를 뚫고 1차 접근
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            # 1. 구글 우회 링크를 뚫고 1차 접근 (User-Agent를 더 브라우저처럼 보강)
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
             res = requests.get(link, headers=headers, timeout=10)
             real_url = res.url  
             
-            # 2. 구글의 빈 껍데기 페이지에 갇혔다면 본문 안의 '진짜 주소'를 강제 추출
-            if "news.google.com" in real_url or "consent.google.com" in real_url:
+            # 2. 구글 경유지에 갇혔다면, 페이지 안의 '진짜 외부 주소'를 샅샅이 뒤집니다.
+            if "google.com" in real_url:
                 soup = BeautifulSoup(res.text, "html.parser")
-                # 구글 리다이렉트 페이지는 보통 첫 번째 <a> 태그에 진짜 주소를 숨겨둡니다.
-                a_tag = soup.find("a")
-                if a_tag and a_tag.get("href"):
-                    real_url = a_tag.get("href")
+                # 페이지 내의 모든 링크(a 태그)를 검사하여 구글이 아닌 진짜 언론사를 찾습니다.
+                for a_tag in soup.find_all("a"):
+                    href = a_tag.get("href", "")
+                    if href.startswith("http") and "google.com" not in href:
+                        real_url = href
+                        break # 진짜 링크를 찾으면 탐색 중단
             
-            # 최종 도착지가 여전히 구글이면 비정상 링크로 간주하고 패스
-            if "news.google.com" in real_url:
+            # 그래도 구글 링크라면 비정상 처리
+            if "google.com" in real_url:
                 print("   ㄴ ⚠️ 실제 언론사 링크 파악 불가. 다음으로 넘어갑니다.")
                 continue
 
-            print(f"   ㄴ 🔗 최종 분석 대상: {real_url[:60]}...")
+            print(f"   ㄴ 🔗 최종 도착 언론사: {real_url[:60]}...")
             
-            # 3. 알아낸 진짜 주소를 newspaper에 전달
+            # 3. 진짜 주소를 newspaper에 전달
             article = Article(real_url, language='ko')
             article.download()
             article.parse()
@@ -135,7 +139,7 @@ def fetch_news_by_topic(topic_info):
             content = article.text.strip()[:1500]
             image_url = article.top_image
             
-            # 4. 본문이 제대로 추출됐는지 확인 (100자 이상)
+            # 4. 본문 길이 확인
             if len(content) > 100: 
                 return title, content, real_url, image_url
             else:

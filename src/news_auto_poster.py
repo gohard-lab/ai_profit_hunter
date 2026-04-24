@@ -10,6 +10,7 @@ from newspaper import Article
 from bs4 import BeautifulSoup
 from openai import OpenAI
 from dotenv import load_dotenv
+from playwright.sync_api import sync_playwright
 
 # 백그라운드 봇 환경이므로 exe용 트래커를 사용합니다.
 from tracker_exe import log_app_usage 
@@ -109,45 +110,38 @@ def fetch_news_by_topic(topic_info):
             
         try:            
             real_url = link
+            print("   ㄴ 🛡️ 헤드리스 브라우저 엔진 가동 (구글 보안망 정면 돌파 중)...")
             
-            # 1. [바이트 직접 추출] Base64 해독 후, 텍스트 변환 없이 바이트 데이터에서 링크만 강제로 뜯어냅니다.
-            match = re.search(r'/articles/([a-zA-Z0-9_\-]+)', link)
-            if match:
-                encoded = match.group(1)
-                encoded += "=" * ((4 - len(encoded) % 4) % 4) # 패딩 맞추기
-                try:
-                    decoded_bytes = base64.urlsafe_b64decode(encoded)
-                    
-                    # 핵심: 디코딩 에러를 피하기 위해 바이트(rb) 상태에서 http 주소를 바로 검색합니다.
-                    url_match = re.search(rb'(https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&\'()*+,;=%]+)', decoded_bytes)
-                    if url_match:
-                        extracted = url_match.group(1).decode('utf-8')
-                        # 구글이나 시스템 주소가 아니면 진짜 언론사 주소로 확정
-                        if not any(bad in extracted.lower() for bad in ["google", "w3.org", "schema.org"]):
-                            real_url = extracted
-                except Exception:
-                    pass
-            
-            # 2. 혹시라도 실패했을 경우를 대비한 최후의 HTML 스크래퍼 병행
-            if "google.com" in real_url:
-                headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-                cookies = {"CONSENT": "YES+cb.20210720-07-p0.en+FX+410"}
-                res = requests.get(link, headers=headers, cookies=cookies, timeout=10)
+            # [최종 병기] Playwright로 브라우저를 직접 띄워 구글의 자바스크립트 우회(Redirect)를 통과합니다.
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                context = browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                )
+                # 구글 개인정보 동의 화면(로봇 방어막) 프리패스 쿠키
+                context.add_cookies([{"name": "CONSENT", "value": "YES+cb.20210720-07-p0.en+FX+410", "domain": ".google.com", "path": "/"}])
+                page = context.new_page()
                 
-                all_urls = re.findall(r'(https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&\'()*+,;=%]+)', res.text)
-                for u in all_urls:
-                    if not any(bad in u.lower() for bad in ["google", "gstatic", "youtube", "w3.org", "schema.org", "angular.dev", "purl.org"]):
-                        real_url = u
-                        break
-                        
-            # 3. 모든 우회 시도 후에도 구글이면 패스
+                try:
+                    # 구글 뉴스 링크 접속
+                    page.goto(link, timeout=15000)
+                    page.wait_for_load_state("domcontentloaded")
+                    
+                    # 자바스크립트가 서버와 통신하여 진짜 언론사로 튕겨낼 수 있도록 2.5초 대기
+                    page.wait_for_timeout(2500) 
+                    real_url = page.url
+                except Exception as e:
+                    pass
+                finally:
+                    browser.close()
+                    
             if "google.com" in real_url:
-                print("   ㄴ ⚠️ 실제 언론사 링크 파악 불가. 다음으로 넘어갑니다.")
+                print("   ㄴ ⚠️ 실제 언론사 주소 확보 실패. 다음으로 넘어갑니다.")
                 continue
 
             print(f"   ㄴ 🔗 최종 도착 언론사: {real_url[:60]}...")
             
-            # 4. 진짜 주소로 newspaper 구동
+            # 4. 진짜 주소를 찾았으니 newspaper로 텍스트/이미지 추출
             article = Article(real_url, language='ko')
             article.download()
             article.parse()

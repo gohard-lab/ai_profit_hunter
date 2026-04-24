@@ -289,9 +289,26 @@ if __name__ == "__main__":
         if not n_title:
             print(f"🛑 [{topic_name}] 관련 새로운 뉴스가 없습니다. 종료합니다.")
             exit()
-            
+        
+        media_id = None
+        if n_image_url:
+            print("📤 워드프레스에 이미지 업로드 중...")
+            media_id = upload_image_to_wp(n_image_url)
+
         # 2. GPT 재가공 
         print("🤖 GPT 재가공 중 (페르소나 적용)...")
+        final_text = rewrite_with_gpt(n_title, n_content, persona_prompt) 
 
+        print("🔄 마크다운을 HTML로 변환 중...")
+        html_content = markdown.markdown(final_text, extensions=['extra'])
+        
+        if final_text:
+            print("🚀 워드프레스 전송 중...")
+            post_to_wordpress(n_title, html_content, topic_info["cat_id"], topic_info["tag_ids"], media_id, n_link)
+
+            print("✅ 블로그 발행 완료!")
+        else:
+            print("⚠️ GPT가 글을 작성하지 못했습니다.")
+            
     except Exception as e:
         print(f"❗ 메인 실행 에러 발생: {e}")

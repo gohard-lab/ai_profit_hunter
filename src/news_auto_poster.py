@@ -129,8 +129,9 @@ def fetch_news_by_topic(topic_info):
                     domain = parsed_url.netloc.lower()
                     path = parsed_url.path.lower()
                     
-                    # 1차 방어: 도메인에 google, gstatic, youtube가 포함되면 무조건 패스
-                    if "google" in domain or "gstatic" in domain or "youtube" in domain:
+                    # 1차 방어: 구글 관련 도메인 및 웹 표준(w3.org, schema.org) 시스템 도메인 차단
+                    forbidden_words = ["google", "gstatic", "youtube", "w3.org", "schema.org", "purl.org"]
+                    if any(bad in domain for bad in forbidden_words):
                         continue
                         
                     # 2차 방어: 스크립트(.js), 스타일(.css), 이미지 파일이면 패스

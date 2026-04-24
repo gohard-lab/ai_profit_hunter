@@ -108,60 +108,55 @@ def fetch_news_by_topic(topic_info):
         if is_already_posted(link):
             continue
             
-        try:            
+        try:
             real_url = link
-            print("   ㄴ 🛡️ 헤드리스 브라우저 엔진 가동 (구글 보안망 정면 돌파 중)...")
+            print("   ㄴ 🕵️ 구글 암호 해독 및 URL-Decoding 분석 중...")
             
-            # [최종 병기] Playwright로 브라우저를 직접 띄워 구글의 자바스크립트 우회(Redirect)를 통과합니다.
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                context = browser.new_context(
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                )
-                context.add_cookies([{"name": "CONSENT", "value": "YES+cb.20210720-07-p0.en+FX+410", "domain": ".google.com", "path": "/"}])
-                page = context.new_page()
-                
+            import re
+            import base64
+            import urllib.parse
+            import requests
+
+            # 1. Base64 바이트 직접 해독 시도
+            match = re.search(r'/articles/([a-zA-Z0-9_\-]+)', link)
+            if match:
+                encoded = match.group(1)
+                encoded += "=" * ((4 - len(encoded) % 4) % 4)
                 try:
-                    # 구글 뉴스 링크 접속
-                    page.goto(link, timeout=15000)
-                    
-                    # 브라우저의 네트워크 통신이 완전히 조용해질 때까지(이동이 끝날 때까지) 대기
-                    try:
-                        page.wait_for_load_state("networkidle", timeout=6000)
-                    except:
-                        pass # 타임아웃이 나도 멈추지 않고 계속 진행
-                        
-                    real_url = page.url
-                    
-                    # 🚨 여전히 구글 중간 경유지에 갇혀 있다면?
-                    if "google.com" in real_url:
-                        parsed = urllib.parse.urlparse(real_url)
-                        qs = urllib.parse.parse_qs(parsed.query)
-                        
-                        # 1. 주소창 파라미터(url= 또는 q=)에 진짜 주소가 숨어있는 경우
-                        if 'url' in qs:
-                            real_url = qs['url'][0]
-                        elif 'q' in qs:
-                            real_url = qs['q'][0]
-                        else:
-                            # 2. 화면에 렌더링된 "이동하기" 하이퍼링크를 강제로 찾아내기
-                            links = page.evaluate("() => Array.from(document.querySelectorAll('a')).map(a => a.href)")
-                            for href in links:
-                                if href.startswith("http") and not any(bad in href.lower() for bad in ["google", "gstatic", "youtube", "w3.org", "schema.org"]):
-                                    real_url = href
-                                    break
-                except Exception as e:
+                    decoded_bytes = base64.urlsafe_b64decode(encoded)
+                    url_match = re.search(rb'(https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&\'()*+,;=%]+)', decoded_bytes)
+                    if url_match:
+                        extracted = url_match.group(1).decode('utf-8', errors='ignore')
+                        if "google" not in extracted.lower():
+                            real_url = extracted
+                except Exception:
                     pass
-                finally:
-                    browser.close()
+
+            # 2. 해독 실패 시, 소스코드 URL 디코딩(unquote) 강제 추출
+            if "google.com" in real_url:
+                headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"}
+                res = requests.get(link, headers=headers, timeout=10, allow_redirects=True)
+                
+                if "google.com" not in res.url:
+                    real_url = res.url
+                else:
+                    # 💥 핵심 포인트: 소스코드에 %3A%2F 처럼 인코딩된 문자열을 정상 주소로 변환하여 발굴
+                    unquoted_text = urllib.parse.unquote(res.text)
+                    all_urls = re.findall(r'(https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&\'()*+,;=%]+)', unquoted_text)
                     
+                    forbidden = ["google", "gstatic", "youtube", "w3.org", "schema.org", "purl.org", "angular.dev"]
+                    for u in all_urls:
+                        if not any(bad in u.lower() for bad in forbidden):
+                            real_url = u
+                            break
+
             if "google.com" in real_url:
                 print("   ㄴ ⚠️ 실제 언론사 주소 확보 실패. 다음으로 넘어갑니다.")
                 continue
 
             print(f"   ㄴ 🔗 최종 도착 언론사: {real_url[:60]}...")
             
-            # 4. 진짜 주소를 찾았으니 newspaper로 텍스트/이미지 추출
+            # 3. 진짜 주소로 본문 추출
             article = Article(real_url, language='ko')
             article.download()
             article.parse()

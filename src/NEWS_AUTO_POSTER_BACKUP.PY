@@ -35,59 +35,37 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 TOPIC_CONFIG = {
     "F1_모터스포츠": {
         "query": "F1 레이싱 OR WEC",
-        "cat_id": 14,   # 예: F1 인사이트 카테고리 ID
-        "tag_ids": [23], # 예: f1-motorsports 태그 ID (숫자로 입력)
+        "cat_id": [10],   # 예: F1 인사이트 카테고리 ID
+        "tag_ids": [101], # 예: f1-motorsports 태그 ID (숫자로 입력)
         "prompt": "자동차 전문 기자이자 M2 오너인 개발자 입장에서 F1 기술이 양산차에 미치는 영향을 차분하고 논리적으로 분석해 줘."
     },
     "올드무비": {
         "query": '"고전 영화" OR "클래식 영화" OR "명작 재개봉" OR "레트로 영화"',
-        "cat_id": 15,   # 기존에 넣으신 ID 유지
+        "cat_id": [15],   # 기존에 넣으신 ID 유지
         "tag_ids": [102], # 기존에 넣으신 ID 유지
         "prompt": "영화 매니아 개발자로서 아날로그 감성이 느껴지는 올드무비의 매력과 감상을 솔직 담백하게 서술해 줘."
     },
     "레트로기기": {
         "query": '"카세트 플레이어" OR "소니 워크맨" OR "카세트 워크맨" OR "빈티지 오디오" OR "LP 플레이어"',
-        "cat_id": 17,
+        "cat_id": [20],
         "tag_ids": [103],
         "prompt": "클래식 카세트 수집가로서 아날로그 기기가 주는 향수와 하드웨어적 매력을 객관적으로 설명해 줘."
     },
     "IT트렌드": {
         "query": "파이썬 개발 OR 소프트웨어 트렌드",
-        "cat_id": 7,    # IT 뉴스 브리핑 카테고리 ID
+        "cat_id": [5],    # IT 뉴스 브리핑 카테고리 ID
         "tag_ids": [104], # it-tech-trends 태그 ID
         "prompt": "IT/과학 트렌드를 분석하는 잡학다식 개발자로서, 이 기술이 실무에 미칠 영향을 명확하게 정리해 줘."
     },
-    # 🌍 글로벌 스포츠: 전문 스포츠 분석가 페르소나
-    "글로벌_스포츠": {
-        "query": '"F1" OR "WEC" OR "해외축구" OR "프리미어리그" OR "챔피언스리그" OR "메이저리그" OR "MLB" OR "NBA" OR "테니스" OR "그랜드슬램" OR "프로배구" OR "V리그" OR "UFC"',
-        "cat_id": 29,  # 주소창 tag_ID에서 찾은 '글로벌 스포츠' 카테고리 번호
-        "tag_ids": [201, 202], # 예: #해외스포츠, #경기결과 태그 번호
-        "prompt": "글로벌 스포츠 전문 기자로서 경기의 핵심 포인트와 관전 요소를 데이터 중심으로 흥미진진하게 분석해 줘. 가독성을 위해 불렛포인트를 활용해."
-    },
+    # 🌍 글로벌 스포츠 및 국내 주요 리그 종합
+    "글로벌_스포츠": [{"query": '"F1" OR "WEC" OR "해외축구" OR "프리미어리그" OR "챔피언스리그" OR "메이저리그" OR "MLB" OR "NBA" OR "테니스" OR "그랜드슬램" OR "프로배구" OR "V리그" OR "UFC"'}],
     
-    # 🎬 해외 엔터이슈: 할리우드 통신원 페르소나
-    "해외_엔터이슈": {
-        "query": '"할리우드" OR "해외연예" OR "팝스타" OR "빌보드" OR "아카데미 시상식" OR "칸 영화제" OR "넷플릭스 오리지널" OR "해외 가십"',
-        "cat_id": 34,  # '해외 엔터' 카테고리 번호
-        "tag_ids": [301, 302], # 예: #할리우드, #넷플릭스 태그 번호
-        "prompt": "할리우드 소식에 정통한 엔터테인먼트 칼럼니스트로서 현지 분위기와 비하인드 스토리를 포함해 솔직 담백하고 위트 있게 서술해 줘."
-    },
+    # 🎬 할리우드/유럽 영화, 팝스타 가십 및 글로벌 엔터 트렌드
+    "해외_엔터이슈": [{"query": '"할리우드" OR "해외연예" OR "팝스타" OR "빌보드" OR "아카데미 시상식" OR "칸 영화제" OR "넷플릭스 오리지널" OR "해외 가십"'}],
 
-    # 🇰🇷 국내 스포츠: 열혈 스포츠 팬 페르소나
-    "국내_스포츠": {
-        "query": '"KBO" OR "프로야구" OR "K리그" OR "국가대표" OR "KBL" OR "한국시리즈"',
-        "cat_id": 32,  # '국내 스포츠' 카테고리 번호
-        "tag_ids": [401, 402], # 예: #프로야구, #K리그 태그 번호
-        "prompt": "국내 스포츠 팬들의 열정을 대변하는 분석가로서 경기의 흐름과 선수들의 활약상을 현장감 넘치게 정리해 줘."
-    },
-
-    # 🇰🇷 국내 연예: K-콘텐츠 전문가 페르소나
-    "국내_연예": {
-        "query": '"K팝" OR "아이돌" OR "국내 개봉작" OR "드라마 시청률" OR "천만 영화"',
-        "cat_id": 35,  # '국내 연예' 카테고리 번호
-        "tag_ids": [501, 502], # 예: #K팝, #드라마 태그 번호
-        "prompt": "대한민국 대중문화 평론가로서 최신 트렌드와 작품의 흥행 요인을 날카롭고 지적으로 분석해서 독자들에게 소개해 줘."
-    }
+    # 🇰🇷 국내 주요 스포츠 및 K-엔터 (필요시 분리 사용)
+    "국내_스포츠": [{"query": '"KBO" OR "프로야구" OR "K리그" OR "국가대표" OR "KBL" OR "한국시리즈"'}],
+    "국내_연예": [{"query": '"K팝" OR "아이돌" OR "국내 개봉작" OR "드라마 시청률" OR "천만 영화"'}]
 }
 
 # RSS_FEEDS = {
@@ -281,77 +259,56 @@ def post_to_wordpress(title, content, cat_ids, tag_ids, media_id=None, news_link
         print(f"❌ 실패: {res.status_code} - {res.text}")
 
 if __name__ == "__main__":
-    # 1. 모든 관심사(네이버 메인 + 서브 4개 등)를 순차적으로 모두 실행합니다.
-    for topic_name in TOPIC_CONFIG.keys():
-        try:
-            topic_info = TOPIC_CONFIG[topic_name]
+    try:
+        # 등록된 관심사 중 하나를 랜덤으로 선택하여 실행합니다.
+        topic_name = random.choice(list(TOPIC_CONFIG.keys()))
+        topic_info = TOPIC_CONFIG[topic_name]
+        
+        log_app_usage("news_auto_poster", "bot_started", details={"action": "cron_execution", "topic": topic_name})
+        
+        # 🛠️ 통합 수정: topic_info가 리스트([])든 딕셔너리({})든 
+        # 에러 없이 안전하게 정보(info_dict)를 알맹이만 빼냅니다.
+        if isinstance(topic_info, list):
+            info_dict = topic_info[0]
+        else:
+            info_dict = topic_info
             
-            log_app_usage("news_auto_poster", "topic_started", details={"topic": topic_name})
-            print(f"\n{"="*50}")
-            print(f"🚀 [{topic_name}] 카테고리 작업 시작...")
+        # 알맹이에서 검색어와 프롬프트를 쏙 뽑아냅니다.
+        search_query = info_dict['query']
+        persona_prompt = info_dict.get('prompt', '전문가의 시선으로 차분하고 지적으로 작성해 주세요.')
+        
+        # 🛠️ 통합 수정: 구글식 OR 쿼리를 네이버용 단일 키워드로 쪼개서 하나 랜덤 선택
+        if " OR " in search_query:
+            keywords = [k.replace('"', '').strip() for k in search_query.split(" OR ")]
+            search_query = random.choice(keywords)
             
-            # 🛠️ 리스트/딕셔너리 구조 안전하게 알맹이(info_dict) 추출
-            if isinstance(topic_info, list):
-                info_dict = topic_info[0]
-            else:
-                info_dict = topic_info
-                
-            search_query = info_dict['query']
-            # 고전 게임 등의 경우 유튜브 임베드 로직을 프롬프트에 살짝 추가합니다.
-            base_prompt = info_dict.get('prompt', '전문가의 시선으로 차분하게 작성해 주세요.')
-            if "게임" in topic_name or "고전" in topic_name:
-                base_prompt += " 만약 관련 유튜브 영상이나 에뮬레이터 코드가 있다면 HTML iframe 형태로 본문 하단에 포함해줘."
+        # 1. 수집 엔진 가동 (분리된 검색어 사용)
+        n_title, n_content, n_link, n_image_url = fetch_news_by_topic(topic_name, search_query)
+        
+        if not n_title:
+            print(f"🛑 [{topic_name}] 관련 새로운 뉴스가 없습니다. 종료합니다.")
+            exit()
+        
+        media_id = None
+        if n_image_url:
+            print("📤 워드프레스에 이미지 업로드 중...")
+            media_id = upload_image_to_wp(n_image_url)
 
-            # 🛠️ 네이버 검색용 OR 쿼리 처리
-            if " OR " in search_query:
-                keywords = [k.replace('"', '').strip() for k in search_query.split(" OR ")]
-                search_query = random.choice(keywords)
-                
-            # 2. 뉴스 수집 엔진 가동
-            n_title, n_content, n_link, n_image_url = fetch_news_by_topic(topic_name, search_query)
+        # 2. GPT 재가공 
+        print("🤖 GPT 재가공 중 (페르소나 적용)...")
+        final_text = rewrite_with_gpt(n_title, n_content, persona_prompt) 
+
+        print("🔄 마크다운을 HTML로 변환 중...")
+        html_content = markdown.markdown(final_text, extensions=['extra'])
+        
+        if final_text:
+            print("🚀 워드프레스 전송 중...")
+            # post_to_wordpress(n_title, html_content, topic_info["cat_id"], topic_info["tag_ids"], media_id, n_link)
+            post_to_wordpress(n_title, html_content, info_dict["cat_id"], info_dict["tag_ids"], media_id, n_link)
+
+            print("✅ 블로그 발행 완료!")
+        else:
+            print("⚠️ GPT가 글을 작성하지 못했습니다.")
             
-            if not n_title:
-                print(f"🛑 [{topic_name}] 관련 새로운 뉴스가 없어 건너뜁니다.")
-                continue # 다음 카테고리로 이동
-            
-            # 3. 이미지 처리
-            media_id = None
-            if n_image_url:
-                print("📤 워드프레스에 이미지 업로드 중...")
-                media_id = upload_image_to_wp(n_image_url)
-
-            # 4. 제미니(Gemini) AI 재가공
-            print(f"🤖 AI 재가공 중 (페르소나: {topic_name})...")
-            # rewrite_with_gpt 함수 내부에서 Gemini API를 호출하도록 설정되어 있어야 합니다.
-            final_text = rewrite_with_gpt(n_title, n_content, base_prompt) 
-
-            if not final_text:
-                print(f"⚠️ [{topic_name}] GPT 가공 실패.")
-                continue
-
-            # 5. 마크다운 -> HTML 변환
-            print("🔄 HTML 변환 및 워드프레스 전송 준비...")
-            html_content = markdown.markdown(final_text, extensions=['extra'])
-            
-            # 6. 워드프레스 전송 (각 토픽에 설정된 cat_id, tag_ids로 정확히 배달)
-            print(f"🚀 워드프레스 발행 중... (카테고리 ID: {info_dict.get('cat_id')})")
-            post_to_wordpress(
-                n_title, 
-                html_content, 
-                info_dict["cat_id"], 
-                info_dict["tag_ids"], 
-                media_id, 
-                n_link
-            )
-
-            print(f"✅ [{topic_name}] 발행 완료!")
-            
-            # 서버 및 API 부하 방지를 위해 각 포스팅 사이에 잠시 휴식
-            time.sleep(10)
-
-        except Exception as e:
-            print(f"❗ [{topic_name}] 실행 중 에러 발생: {e}")
-            continue # 에러가 나도 다음 토픽은 계속 진행
-
-    print(f"\n{"="*50}")
-    print("🏁 모든 카테고리 포스팅 작업이 종료되었습니다.")
+    except Exception as e:
+        print(f"❗ 메인 실행 에러 발생: {e}")

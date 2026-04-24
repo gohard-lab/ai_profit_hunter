@@ -4,17 +4,14 @@ import markdown
 import os
 from bs4 import BeautifulSoup
 from openai import OpenAI
-from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv
-from tracker_web import log_app_usage  # 필요시 활성화
 
-# --- [수정 금지] 설정 정보 ---
+# 백그라운드 봇 환경이므로 exe용 트래커를 사용합니다.
+from tracker_exe import log_app_usage 
+
+# --- [설정 정보] ---
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-# WP_URL = "http://gohard.pe.kr/wp-json/wp/v2/posts/"
-# WP_URL = "http://www.gohard.pe.kr/wp-json/wp/v2/posts/"
-# 변경할 필살기 주소 (이 방식은 리다이렉트 없이 바로 꽂힙니다)
-# WP_URL = "http://gohard.pe.kr/index.php?rest_route=/wp/v2/posts/"
 WP_URL = "https://gohard.pe.kr/index.php?rest_route=/wp/v2/posts/"
 WP_USER = os.getenv("WP_USER")
 WP_APP_PASS = os.getenv("WP_APP_PASS")
@@ -22,7 +19,7 @@ WP_APP_PASS = os.getenv("WP_APP_PASS")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 def fetch_naver_news():
-    """네이버 IT/과학 뉴스 헤드라인 하나를 가져옵니다."""
+    """네이버 IT/과학 뉴스 헤드라인 하나와 링크를 가져옵니다."""
     url = "https://news.naver.com/section/105" # IT/과학 섹션
     headers = {"User-Agent": "Mozilla/5.0"}
     res = requests.get(url, headers=headers)
@@ -38,7 +35,8 @@ def fetch_naver_news():
     detail_soup = BeautifulSoup(detail_res.text, "html.parser")
     content = detail_soup.select_one("#newsct_article").text.strip()
     
-    return title, content[:1500] # GPT 토큰 절약을 위해 본문은 일부만 사용
+    # 이미지 추출을 위해 기사 원본 링크(link)도 같이 반환합니다.
+    return title, content[:1500], link 
 
 def rewrite_with_gpt(original_title, original_content):
     """대표님의 '잡학다식 개발자' 페르소나로 재작성"""
@@ -61,9 +59,54 @@ def rewrite_with_gpt(original_title, original_content):
     )
     return response.choices[0].message.content
 
-def post_to_wordpress(title, content):
+def get_og_image(news_url):
+    """기사 원문에서 대표 이미지(og:image) 주소를 추출합니다."""
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        res = requests.get(news_url, headers=headers, timeout=10)
+        soup = BeautifulSoup(res.text, 'lxml')
+        
+        og_image = soup.find("meta", property="og:image")
+        return og_image["content"] if og_image else None
+    except Exception as e:
+        print(f"⚠️ 이미지 추출 실패: {e}")
+        return None
 
-    # [핵심 2] 출입증(비밀번호)을 서버가 못 뺏어가게 Base64로 튼튼하게 포장
+def upload_image_to_wp(image_url):
+    """추출한 이미지를 워드프레스 미디어 라이브러리에 업로드합니다."""
+    if not image_url:
+        return None
+    
+    try:
+        # 1. 이미지 다운로드
+        img_res = requests.get(image_url, stream=True)
+        img_data = img_res.content
+        filename = image_url.split("/")[-1].split("?")[0]
+        if not filename.endswith(('.jpg', '.jpeg', '.png', '.gif')):
+            filename = "news_thumbnail.jpg"
+
+        # 2. 워드프레스 미디어 API로 전송
+        user_credentials = f"{WP_USER}:{WP_APP_PASS}"
+        base64_credentials = base64.b64encode(user_credentials.encode()).decode()
+        
+        media_url = "https://gohard.pe.kr/index.php?rest_route=/wp/v2/media/"
+        headers = {
+            'Authorization': f'Basic {base64_credentials}',
+            'Content-Disposition': f'attachment; filename={filename}',
+            'Content-Type': 'image/jpeg' 
+        }
+        
+        response = requests.post(media_url, data=img_data, headers=headers, verify=False)
+        
+        if response.status_code == 201:
+            return response.json()['id']
+        return None
+    except Exception as e:
+        print(f"⚠️ 미디어 업로드 실패: {e}")
+        return None
+
+def post_to_wordpress(title, content, media_id=None):
+    """재작성된 글과 업로드된 이미지를 묶어서 워드프레스에 발행합니다."""
     user_credentials = f"{WP_USER}:{WP_APP_PASS}"
     base64_credentials = base64.b64encode(user_credentials.encode()).decode()
 
@@ -72,44 +115,61 @@ def post_to_wordpress(title, content):
         'Content-Type': 'application/json'
     }
 
-    """워드프레스에 임시 저장으로 업로드"""
     payload = {
         "title": title,
         "content": content,
-        "status": "draft", # 안전을 위해 임시 저장
+        "status": "draft", 
         "categories": [1]
     }
     
-    # [핵심 3] allow_redirects=True로 끝까지 추적해서 꽂아넣기
+    # 미디어 ID가 존재하면 특성 이미지로 추가
+    if media_id:
+        payload['featured_media'] = media_id
+
     res = requests.post(WP_URL, json=payload, headers=headers, verify=False)
     
-    # res = requests.post(
-    #     WP_URL,
-    #     auth=HTTPBasicAuth(WP_USER, WP_APP_PASS),
-    #     json=payload
-    # )
-    
     if res.status_code == 201:
-        # log_app_usage("naver_bot", "upload_success", {"title": title})
+        # 트래커: 포스팅 성공 기록 (이미지 유무 포함)
+        log_app_usage("news_auto_poster", "post_success", details={
+            "title": title,
+            "has_image": bool(media_id),
+            "status_code": 201
+        })
         print(f"✅ 성공: {title} 가 임시저장되었습니다.")
     else:
+        # 트래커: 포스팅 실패 기록
+        log_app_usage("news_auto_poster", "post_failed", details={
+            "title": title,
+            "error": res.text,
+            "status_code": res.status_code
+        })
         print(f"❌ 실패: {res.status_code} - {res.text}")
 
 if __name__ == "__main__":
     try:
+        # 트래커: 봇 작동 시작 기록
+        log_app_usage("news_auto_poster", "bot_started", details={"action": "cron_execution"})
+        
         print("🚀 네이버 뉴스 수집 중...")
-        n_title, n_content = fetch_naver_news()
+        n_title, n_content, n_link = fetch_naver_news()
+        
+        print("📸 대표 이미지 찾는 중...")
+        image_url = get_og_image(n_link)
+        media_id = None
+        if image_url:
+            print("📤 워드프레스에 이미지 업로드 중...")
+            media_id = upload_image_to_wp(image_url)
         
         print("🤖 GPT 재가공 중 (잡학다식 개발자 버전)...")
         refined_content = rewrite_with_gpt(n_title, n_content)
         
         print("🔄 마크다운을 HTML로 변환 중...")
-        # 마크다운을 워드프레스가 인식할 수 있는 HTML로 변환합니다. (표, 리스트 등 확장 기능 포함)
         html_content = markdown.markdown(refined_content, extensions=['extra'])
         
         print("📤 워드프레스 전송 중...")
-        # 변환된 html_content를 워드프레스로 보냅니다.
-        post_to_wordpress(n_title, html_content)
+        post_to_wordpress(n_title, html_content, media_id)
         
     except Exception as e:
+        # 트래커: 실행 중 크리티컬 에러 기록
+        log_app_usage("news_auto_poster", "bot_error", details={"error": str(e)})
         print(f"❗ 에러 발생: {e}")

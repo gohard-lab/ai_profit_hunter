@@ -107,45 +107,47 @@ def fetch_news_by_topic(topic_info):
         if is_already_posted(link):
             continue
             
-        try:
+        try:            
             real_url = link
             
-            # 1. [초강력 우회] 구글 페이지에 접속하지 않고, 링크 안의 암호(Base64)를 직접 해독합니다.
-            # 구글 뉴스 RSS는 /articles/ 뒤에 진짜 주소를 암호화해서 숨겨둡니다.
+            # 1. [바이트 직접 추출] Base64 해독 후, 텍스트 변환 없이 바이트 데이터에서 링크만 강제로 뜯어냅니다.
             match = re.search(r'/articles/([a-zA-Z0-9_\-]+)', link)
             if match:
                 encoded = match.group(1)
-                # Base64 패딩(=) 맞추기 (수학적 복원을 위한 필수 작업)
-                encoded += "=" * ((4 - len(encoded) % 4) % 4)
+                encoded += "=" * ((4 - len(encoded) % 4) % 4) # 패딩 맞추기
                 try:
-                    # 암호문 바이너리 해독
                     decoded_bytes = base64.urlsafe_b64decode(encoded)
-                    # 해독된 데이터 속에서 http:// 또는 https:// 로 시작하는 진짜 주소만 추출
-                    url_match = re.search(r'(https?://[^\x00-\x20"\'<>]+)', decoded_bytes.decode('latin1'))
+                    
+                    # 핵심: 디코딩 에러를 피하기 위해 바이트(rb) 상태에서 http 주소를 바로 검색합니다.
+                    url_match = re.search(rb'(https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&\'()*+,;=%]+)', decoded_bytes)
                     if url_match:
-                        real_url = url_match.group(1)
+                        extracted = url_match.group(1).decode('utf-8')
+                        # 구글이나 시스템 주소가 아니면 진짜 언론사 주소로 확정
+                        if not any(bad in extracted.lower() for bad in ["google", "w3.org", "schema.org"]):
+                            real_url = extracted
                 except Exception:
                     pass
             
-            # 2. 해독에 실패해서 여전히 구글 링크라면, 최후의 수단으로 자바스크립트 강제 탐색
+            # 2. 혹시라도 실패했을 경우를 대비한 최후의 HTML 스크래퍼 병행
             if "google.com" in real_url:
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                }
-                res = requests.get(link, headers=headers, timeout=10)
-                # 구글이 자바스크립트를 이용해 몰래 이동시키는 주소(window.location.replace) 포착
-                js_match = re.search(r'window\.location\.replace\([\'"](https?://[^\'"]+)[\'"]\)', res.text)
-                if js_match:
-                    real_url = js_match.group(1)
-                    
-            # 3. 모든 방어를 뚫지 못했다면 포기하고 다음 기사로
+                headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+                cookies = {"CONSENT": "YES+cb.20210720-07-p0.en+FX+410"}
+                res = requests.get(link, headers=headers, cookies=cookies, timeout=10)
+                
+                all_urls = re.findall(r'(https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&\'()*+,;=%]+)', res.text)
+                for u in all_urls:
+                    if not any(bad in u.lower() for bad in ["google", "gstatic", "youtube", "w3.org", "schema.org", "angular.dev", "purl.org"]):
+                        real_url = u
+                        break
+                        
+            # 3. 모든 우회 시도 후에도 구글이면 패스
             if "google.com" in real_url:
-                print("   ㄴ ⚠️ 실제 언론사 링크 파악 불가 (구글 철통 보안). 다음으로 넘어갑니다.")
+                print("   ㄴ ⚠️ 실제 언론사 링크 파악 불가. 다음으로 넘어갑니다.")
                 continue
 
             print(f"   ㄴ 🔗 최종 도착 언론사: {real_url[:60]}...")
             
-            # 4. 알아낸 진짜 주소를 newspaper에 전달하여 본문 스크랩
+            # 4. 진짜 주소로 newspaper 구동
             article = Article(real_url, language='ko')
             article.download()
             article.parse()

@@ -93,10 +93,16 @@ def fetch_news_by_topic(topic_info):
     rss_url = f"https://news.google.com/rss/search?q={encoded_query}&hl=ko&gl=KR&ceid=KR:ko"
     
     feed = feedparser.parse(rss_url)
+
+    # 🚨 여기에 진단용 엑스레이 1번 추가
+    print(f"🔍 구글에서 찾아온 기사 개수: {len(feed.entries)}개")
     
     for entry in feed.entries:
         title = entry.title
         link = entry.link
+        
+        # 🚨 여기에 진단용 엑스레이 2번 추가
+        print(f"👉 본문 추출 시도 중: {title[:40]}...")
         
         if is_already_posted(link):
             print(f"⏭️ 건너뜀 (이미 포스팅됨): {title}")

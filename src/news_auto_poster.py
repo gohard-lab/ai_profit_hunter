@@ -122,13 +122,16 @@ def fetch_news_by_topic(topic_info):
             
             # 2. 여전히 구글 페이지에 갇혔다면, 소스코드 전체를 뒤져 진짜 주소를 강제 추출합니다.
             if "google.com" in real_url:
-                # 페이지 내의 모든 http/https 링크를 싹쓸이
+                # 차단할 구글 관련 도메인 리스트
+                forbidden_domains = ["google.com", "google.co.kr", "googleusercontent", "gstatic.com", "youtube.com"]
                 all_urls = re.findall(r'(https?://[^\s"\'<>]+)', res.text)
+                
                 for u in all_urls:
-                    # 구글 자체 링크나 쓸데없는 시스템 링크는 제외
-                    if "google.com" not in u and "gstatic.com" not in u and "schema.org" not in u:
+                    # 링크에서 도메인 부분만 분리해서 검사합니다.
+                    parsed_domain = urllib.parse.urlparse(u).netloc.lower()
+                    if parsed_domain and not any(bad in parsed_domain for bad in forbidden_domains):
                         real_url = u
-                        break # 첫 번째로 발견된 진짜 외부 링크를 채택
+                        break # 구글이 아닌 진짜 언론사 도메인이면 채택
             
             # 3. 그래도 못 찾았다면 비정상 링크 처리
             if "google.com" in real_url:

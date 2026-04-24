@@ -2,6 +2,8 @@ import base64
 import requests
 import markdown
 import os
+import random
+import urllib.parse
 from bs4 import BeautifulSoup
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -21,6 +23,34 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+# --- [토픽 설정 정보 추가] ---
+TOPIC_CONFIG = {
+    "F1_모터스포츠": {
+        "query": "F1 레이싱 OR WEC",
+        "cat_id": [10],   # 예: F1 인사이트 카테고리 ID
+        "tag_ids": [101], # 예: f1-motorsports 태그 ID (숫자로 입력)
+        "prompt": "자동차 전문 기자이자 M2 오너인 개발자 입장에서 F1 기술이 양산차에 미치는 영향을 차분하고 논리적으로 분석해 줘."
+    },
+    "올드무비": {
+        "query": "고전 영화 명작",
+        "cat_id": [15],   # 영화 한 줄 평 카테고리 ID
+        "tag_ids": [102], # cinema-archive 태그 ID
+        "prompt": "영화 매니아 개발자로서 아날로그 감성이 느껴지는 올드무비의 매력과 감상을 솔직 담백하게 서술해 줘."
+    },
+    "레트로기기": {
+        "query": "카세트 플레이어 OR 워크맨 빈티지",
+        "cat_id": [20],   # 취미의 기록 카테고리 ID
+        "tag_ids": [103], # analog-cassette 태그 ID
+        "prompt": "클래식 카세트 수집가로서 아날로그 기기가 주는 향수와 하드웨어적 매력을 객관적으로 설명해 줘."
+    },
+    "IT트렌드": {
+        "query": "파이썬 개발 OR 소프트웨어 트렌드",
+        "cat_id": [5],    # IT 뉴스 브리핑 카테고리 ID
+        "tag_ids": [104], # it-tech-trends 태그 ID
+        "prompt": "IT/과학 트렌드를 분석하는 잡학다식 개발자로서, 이 기술이 실무에 미칠 영향을 명확하게 정리해 줘."
+    }
+}
 
 def is_already_posted(link):
     """Supabase usage_logs 테이블을 조회하여 중복 기사인지 확인합니다."""
@@ -54,40 +84,44 @@ def is_already_posted(link):
         print(f"⚠️ DB 조회 실패: {e}")
         return False
 
-def fetch_naver_news():
-    """네이버 IT/과학 뉴스에서 '아직 올리지 않은' 뉴스를 찾습니다."""
-    url = "https://news.naver.com/section/105"
+def fetch_news_by_topic(topic_info):
+    """네이버 검색(최신순)을 통해 특정 주제의 뉴스를 수집합니다."""
+    encoded_query = urllib.parse.quote(topic_info["query"])
+    search_url = f"https://search.naver.com/search.naver?where=news&query={encoded_query}&sort=1"
     headers = {"User-Agent": "Mozilla/5.0"}
-    res = requests.get(url, headers=headers)
-    soup = BeautifulSoup(res.text, "html.parser")
     
-    news_items = soup.select(".sa_text_title")
+    res = requests.get(search_url, headers=headers)
+    soup = BeautifulSoup(res.text, "html.parser")
+    news_items = soup.select(".news_tit")
     
     for item in news_items:
         title = item.text.strip()
         link = item['href']
         
-        # Supabase DB 조회로 중복 검사
+        # 상세 본문 추출을 위해 네이버 자체 서비스 기사만 필터링
+        if "news.naver.com" not in link:
+            continue
+            
         if is_already_posted(link):
             print(f"⏭️ 건너뜀 (이미 포스팅됨): {title}")
             continue
             
-        # 새로운 뉴스를 찾았다면 상세 내용 수집
         detail_res = requests.get(link, headers=headers)
         detail_soup = BeautifulSoup(detail_res.text, "html.parser")
         article_body = detail_soup.select_one("#newsct_article")
         
         if article_body:
-            # 기사 원문 링크(link)도 함께 반환합니다.
             return title, article_body.text.strip()[:1500], link
             
     return None, None, None
 
-def rewrite_with_gpt(original_title, original_content):
-    """'잡학다식 개발자' 페르소나로 재작성"""
+def rewrite_with_gpt(original_title, original_content, topic_prompt):
+    """주제별 맞춤형 페르소나로 재작성"""
     prompt = f"""
     당신은 '잡학다식 개발자'라는 블로그를 운영하는 지적이고 솔직 담백한 개발자입니다.
     아래 뉴스 기사를 읽고, 독자들에게 유익한 정보를 전달하는 블로그 포스팅으로 재작성해주세요.
+    
+    [특별 지시사항]: {topic_prompt}
     
     - 말투: 차분하고 논리적이며, 불필요한 수식어는 뺍니다.
     - 형식: 마크다운(Markdown)을 사용해 가독성을 높입니다.
@@ -148,7 +182,7 @@ def upload_image_to_wp(image_url):
         print(f"⚠️ 미디어 업로드 실패: {e}")
         return None
 
-def post_to_wordpress(title, content, media_id=None, news_link=None):
+def post_to_wordpress(title, content, cat_ids, tag_ids, media_id=None, news_link=None):
     """글을 발행하고, 성공 시 Supabase에 링크 정보를 포함하여 기록합니다."""
     user_credentials = f"{WP_USER}:{WP_APP_PASS}"
     base64_credentials = base64.b64encode(user_credentials.encode()).decode()
@@ -162,7 +196,8 @@ def post_to_wordpress(title, content, media_id=None, news_link=None):
         "title": title,
         "content": content,
         "status": "publish", 
-        "categories": [1]
+        "categories": cat_ids,
+        "tags": tag_ids
     }
     
     if media_id:
@@ -171,7 +206,6 @@ def post_to_wordpress(title, content, media_id=None, news_link=None):
     res = requests.post(WP_URL, json=payload, headers=headers, verify=False)
     
     if res.status_code == 201:
-        # 트래커: details 컬럼에 link를 저장하여 다음 조회 시 중복 검증에 사용합니다.
         log_app_usage("news_auto_poster", "post_success", details={
             "title": title,
             "link": news_link,
@@ -189,13 +223,17 @@ def post_to_wordpress(title, content, media_id=None, news_link=None):
 
 if __name__ == "__main__":
     try:
-        log_app_usage("news_auto_poster", "bot_started", details={"action": "cron_execution"})
+        # 등록된 관심사 중 하나를 랜덤으로 선택하여 실행합니다.
+        topic_name = random.choice(list(TOPIC_CONFIG.keys()))
+        topic_info = TOPIC_CONFIG[topic_name]
         
-        print("🚀 네이버 뉴스 수집 중...")
-        n_title, n_content, n_link = fetch_naver_news()
+        log_app_usage("news_auto_poster", "bot_started", details={"action": "cron_execution", "topic": topic_name})
+        print(f"🚀 [{topic_name}] 주제로 네이버 검색 수집 중...")
+        
+        n_title, n_content, n_link = fetch_news_by_topic(topic_info)
         
         if not n_title:
-            print("🛑 새로운 뉴스가 없습니다. 종료합니다.")
+            print(f"🛑 [{topic_name}] 관련 새로운 뉴스가 없습니다. 종료합니다.")
             exit()
             
         print("📸 대표 이미지 찾는 중...")
@@ -205,14 +243,14 @@ if __name__ == "__main__":
             print("📤 워드프레스에 이미지 업로드 중...")
             media_id = upload_image_to_wp(image_url)
         
-        print("🤖 GPT 재가공 중 (잡학다식 개발자 버전)...")
-        refined_content = rewrite_with_gpt(n_title, n_content)
+        print("🤖 GPT 재가공 중 (페르소나 적용)...")
+        refined_content = rewrite_with_gpt(n_title, n_content, topic_info["prompt"])
         
         print("🔄 마크다운을 HTML로 변환 중...")
         html_content = markdown.markdown(refined_content, extensions=['extra'])
         
         print("📤 워드프레스 전송 중...")
-        post_to_wordpress(n_title, html_content, media_id, n_link)
+        post_to_wordpress(n_title, html_content, topic_info["cat_id"], topic_info["tag_ids"], media_id, n_link)
         
     except Exception as e:
         log_app_usage("news_auto_poster", "bot_error", details={"error": str(e)})

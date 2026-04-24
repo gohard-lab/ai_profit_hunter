@@ -120,26 +120,28 @@ def fetch_news_by_topic(topic_info):
             res = requests.get(link, headers=headers, cookies=cookies, timeout=10)
             real_url = res.url  
             
-            # 2. 여전히 구글 페이지에 갇혔다면, 진짜 주소를 강제 추출합니다.
+            # 2. 여전히 구글 페이지에 갇혔다면, <a> 태그만 정밀 타격하여 진짜 주소를 찾습니다.
             if "google.com" in real_url:
-                all_urls = re.findall(r'(https?://[^\s"\'<>]+)', res.text)
+                soup = BeautifulSoup(res.text, "html.parser")
                 
-                for u in all_urls:
-                    parsed_url = urllib.parse.urlparse(u)
-                    domain = parsed_url.netloc.lower()
-                    path = parsed_url.path.lower()
+                # HTML 구조 안에서 실제로 클릭 가능한 링크(a 태그)만 찾습니다.
+                for a_tag in soup.find_all("a"):
+                    href = a_tag.get("href", "")
                     
-                    # 1차 방어: 구글 관련 도메인 및 웹 표준(w3.org, schema.org) 시스템 도메인 차단
-                    forbidden_words = ["google", "gstatic", "youtube", "w3.org", "schema.org", "purl.org"]
+                    # http로 시작하지 않는 상대 경로나 자바스크립트 동작은 무시
+                    if not href.startswith("http"):
+                        continue
+                        
+                    parsed_url = urllib.parse.urlparse(href)
+                    domain = parsed_url.netloc.lower()
+                    
+                    # 1차 방어: 구글 관련 및 시스템/프레임워크 도메인 차단
+                    forbidden_words = ["google", "gstatic", "youtube", "w3.org", "schema.org", "angular.dev", "purl.org"]
                     if any(bad in domain for bad in forbidden_words):
                         continue
                         
-                    # 2차 방어: 스크립트(.js), 스타일(.css), 이미지 파일이면 패스
-                    if path.endswith(('.js', '.css', '.png', '.jpg', '.gif', '.ico', '.json')):
-                        continue
-                        
-                    # 방어막을 모두 통과한 링크가 진짜 언론사 주소!
-                    real_url = u
+                    # 방어막을 통과한 첫 번째 실제 하이퍼링크가 진짜 언론사 주소!
+                    real_url = href
                     break
             
             # 3. 그래도 못 찾았다면 비정상 링크 처리

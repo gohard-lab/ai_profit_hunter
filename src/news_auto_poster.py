@@ -2,6 +2,7 @@ import base64
 import requests
 import markdown
 import os
+import re
 import random
 import urllib.parse
 import feedparser
@@ -107,31 +108,36 @@ def fetch_news_by_topic(topic_info):
             continue
             
         try:
-            # 1. 구글 우회 링크를 뚫고 1차 접근 (User-Agent를 더 브라우저처럼 보강)
+            import re  # 문자열에서 패턴(링크)을 강제로 찾아내는 모듈
+            
+            # 1. 구글 우회 및 '쿠키 동의 장벽' 프리패스 설정
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             }
-            res = requests.get(link, headers=headers, timeout=10)
+            # 구글의 로봇 차단/동의 페이지를 무사 통과하는 마스터 쿠키
+            cookies = {"CONSENT": "YES+cb.20210720-07-p0.en+FX+410"} 
+            
+            res = requests.get(link, headers=headers, cookies=cookies, timeout=10)
             real_url = res.url  
             
-            # 2. 구글 경유지에 갇혔다면, 페이지 안의 '진짜 외부 주소'를 샅샅이 뒤집니다.
+            # 2. 여전히 구글 페이지에 갇혔다면, 소스코드 전체를 뒤져 진짜 주소를 강제 추출합니다.
             if "google.com" in real_url:
-                soup = BeautifulSoup(res.text, "html.parser")
-                # 페이지 내의 모든 링크(a 태그)를 검사하여 구글이 아닌 진짜 언론사를 찾습니다.
-                for a_tag in soup.find_all("a"):
-                    href = a_tag.get("href", "")
-                    if href.startswith("http") and "google.com" not in href:
-                        real_url = href
-                        break # 진짜 링크를 찾으면 탐색 중단
+                # 페이지 내의 모든 http/https 링크를 싹쓸이
+                all_urls = re.findall(r'(https?://[^\s"\'<>]+)', res.text)
+                for u in all_urls:
+                    # 구글 자체 링크나 쓸데없는 시스템 링크는 제외
+                    if "google.com" not in u and "gstatic.com" not in u and "schema.org" not in u:
+                        real_url = u
+                        break # 첫 번째로 발견된 진짜 외부 링크를 채택
             
-            # 그래도 구글 링크라면 비정상 처리
+            # 3. 그래도 못 찾았다면 비정상 링크 처리
             if "google.com" in real_url:
-                print("   ㄴ ⚠️ 실제 언론사 링크 파악 불가. 다음으로 넘어갑니다.")
+                print("   ㄴ ⚠️ 실제 언론사 링크 파악 불가 (구글 보안망). 다음으로 넘어갑니다.")
                 continue
 
             print(f"   ㄴ 🔗 최종 도착 언론사: {real_url[:60]}...")
             
-            # 3. 진짜 주소를 newspaper에 전달
+            # 4. 알아낸 진짜 주소를 newspaper에 전달
             article = Article(real_url, language='ko')
             article.download()
             article.parse()
@@ -139,7 +145,6 @@ def fetch_news_by_topic(topic_info):
             content = article.text.strip()[:1500]
             image_url = article.top_image
             
-            # 4. 본문 길이 확인
             if len(content) > 100: 
                 return title, content, real_url, image_url
             else:

@@ -108,60 +108,44 @@ def fetch_news_by_topic(topic_info):
             continue
             
         try:
-            import re  # 문자열에서 패턴(링크)을 강제로 찾아내는 모듈
+            real_url = link
             
-            # 1. 구글 우회 및 '쿠키 동의 장벽' 프리패스 설정
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            }
-            # 구글의 로봇 차단/동의 페이지를 무사 통과하는 마스터 쿠키
-            cookies = {"CONSENT": "YES+cb.20210720-07-p0.en+FX+410"} 
+            # 1. [초강력 우회] 구글 페이지에 접속하지 않고, 링크 안의 암호(Base64)를 직접 해독합니다.
+            # 구글 뉴스 RSS는 /articles/ 뒤에 진짜 주소를 암호화해서 숨겨둡니다.
+            match = re.search(r'/articles/([a-zA-Z0-9_\-]+)', link)
+            if match:
+                encoded = match.group(1)
+                # Base64 패딩(=) 맞추기 (수학적 복원을 위한 필수 작업)
+                encoded += "=" * ((4 - len(encoded) % 4) % 4)
+                try:
+                    # 암호문 바이너리 해독
+                    decoded_bytes = base64.urlsafe_b64decode(encoded)
+                    # 해독된 데이터 속에서 http:// 또는 https:// 로 시작하는 진짜 주소만 추출
+                    url_match = re.search(r'(https?://[^\x00-\x20"\'<>]+)', decoded_bytes.decode('latin1'))
+                    if url_match:
+                        real_url = url_match.group(1)
+                except Exception:
+                    pass
             
-            res = requests.get(link, headers=headers, cookies=cookies, timeout=10)
-            real_url = res.url  
-            
-            # 2. 여전히 구글 페이지에 갇혔다면, 자동 이동 태그와 구글 특수 속성을 정밀 타격합니다.
+            # 2. 해독에 실패해서 여전히 구글 링크라면, 최후의 수단으로 자바스크립트 강제 탐색
             if "google.com" in real_url:
-                soup = BeautifulSoup(res.text, "html.parser")
-                import re
-                
-                # 패턴 A: <meta http-equiv="refresh"> 자동 이동 태그 탐색 (가장 유력한 구글의 우회 방식)
-                meta_refresh = soup.find("meta", attrs={"http-equiv": lambda x: x and x.lower() == "refresh"})
-                if meta_refresh:
-                    match = re.search(r'url=(.+)', meta_refresh.get("content", ""), re.IGNORECASE)
-                    if match:
-                        real_url = match.group(1).strip("'\" ")
-                        
-                # 패턴 B: 구글 뉴스 특유의 숨겨진 링크 속성 (data-n-href) 탐색
-                if "google.com" in real_url:
-                    hidden_tag = soup.find(attrs={"data-n-href": True})
-                    if hidden_tag:
-                        real_url = hidden_tag["data-n-href"]
-                        
-                # 패턴 C: 실제 클릭 가능한 a 태그 탐색 (기존 로직 보강 방어)
-                if "google.com" in real_url:
-                    for a_tag in soup.find_all("a"):
-                        href = a_tag.get("href", "")
-                        if not href.startswith("http"):
-                            continue
-                            
-                        parsed_url = urllib.parse.urlparse(href)
-                        domain = parsed_url.netloc.lower()
-                        
-                        # 구글 및 시스템 도메인 차단
-                        forbidden_words = ["google", "gstatic", "youtube", "w3.org", "schema.org", "angular.dev", "purl.org"]
-                        if not any(bad in domain for bad in forbidden_words):
-                            real_url = href
-                            break
-            
-            # 3. 그래도 못 찾았다면 비정상 링크 처리
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                }
+                res = requests.get(link, headers=headers, timeout=10)
+                # 구글이 자바스크립트를 이용해 몰래 이동시키는 주소(window.location.replace) 포착
+                js_match = re.search(r'window\.location\.replace\([\'"](https?://[^\'"]+)[\'"]\)', res.text)
+                if js_match:
+                    real_url = js_match.group(1)
+                    
+            # 3. 모든 방어를 뚫지 못했다면 포기하고 다음 기사로
             if "google.com" in real_url:
-                print("   ㄴ ⚠️ 실제 언론사 링크 파악 불가 (구글 보안망). 다음으로 넘어갑니다.")
+                print("   ㄴ ⚠️ 실제 언론사 링크 파악 불가 (구글 철통 보안). 다음으로 넘어갑니다.")
                 continue
 
             print(f"   ㄴ 🔗 최종 도착 언론사: {real_url[:60]}...")
             
-            # 4. 알아낸 진짜 주소를 newspaper에 전달
+            # 4. 알아낸 진짜 주소를 newspaper에 전달하여 본문 스크랩
             article = Article(real_url, language='ko')
             article.download()
             article.parse()

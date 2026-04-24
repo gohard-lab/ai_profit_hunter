@@ -91,23 +91,23 @@ def is_already_posted(link):
         print(f"⚠️ DB 조회 실패: {e}")
         return False
 
-def fetch_news_by_topic(topic):
+def fetch_news_by_topic(topic_name, search_query):
     # 1. Supabase 트래커 기록 (json 타입 details 포함)
     usage_details = json.dumps({
-        "category": topic,
+        "category": topic_name,
         "source": "naver_or_rss"
     }, ensure_ascii=False)
-    log_app_usage("news_auto_poster_exe", f"search_{topic}", details=usage_details)
+    log_app_usage("news_auto_poster_exe", f"search_{topic_name}", details=usage_details)
 
-    print(f"🚀 [{topic}] 주제로 기사 수집 중...")
+    print(f"🚀 [{topic_name}] 주제로 기사 수집 중...")
     
     # 2. 주제가 RSS 목록에 있으면 RSS 직행, 없으면 네이버 검색 API 사용
-    if topic in RSS_FEEDS:
+    if topic_name in RSS_FEEDS:
         news_items = []
-        for rss_url in RSS_FEEDS[topic]:
+        for rss_url in RSS_FEEDS[topic_name]:
             news_items.extend(fetch_direct_rss(rss_url))
     else:
-        news_items = fetch_naver_news(topic)
+        news_items = fetch_naver_news(search_query)
         
     # 3. 기사 원문 추출 (구글 우회 로직 제거됨)
     for item in news_items:
@@ -245,8 +245,11 @@ if __name__ == "__main__":
         log_app_usage("news_auto_poster", "bot_started", details={"action": "cron_execution", "topic": topic_name})
         print(f"🚀 [{topic_name}] 주제로 구글 뉴스 검색 수집 중...")
         
-        n_title, n_content, n_link, n_image_url = fetch_news_by_topic(topic_info)
-        
+        search_query = topic_info[0]['query']
+        n_title, n_content, n_link, n_image_url = fetch_news_by_topic(topic_name, search_query)
+        # n_title, n_content, n_link, n_image_url = fetch_news_by_topic(topic_info)
+
+
         if not n_title:
             print(f"🛑 [{topic_name}] 관련 새로운 뉴스가 없습니다. 종료합니다.")
             exit()

@@ -45,19 +45,3 @@ RSS_FEEDS = {
         "https://www.bloter.net/rss/all.xml"      # 블로터
     ]
 }
-
-if __name__ == "__main__":
-    print("🚀 네이버 API 연동 테스트를 시작합니다...")
-    
-    # 대표님의 관심사인 파이썬 관련 최신 뉴스를 검색해 봅니다.
-    test_keyword = "파이썬"
-    results = fetch_naver_news(test_keyword)
-    
-    if results:
-        print(f"✅ 성공! '{test_keyword}' 관련 최신 기사 3개:")
-        for i, item in enumerate(results[:3], 1):
-            # 네이버는 검색어에 <b> 태그를 붙여서 주므로 깔끔하게 제거합니다.
-            clean_title = item['title'].replace('<b>', '').replace('</b>', '').replace('&quot;', '"')
-            print(f"  {i}. {clean_title} \n     🔗 {item['link']}")
-    else:
-        print("⚠️ 검색 결과가 없습니다. API 키를 다시 한번 확인해 주세요.")

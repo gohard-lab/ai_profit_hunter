@@ -266,11 +266,14 @@ if __name__ == "__main__":
         log_app_usage("news_auto_poster", "bot_started", details={"action": "cron_execution", "topic": topic_name})
         print(f"🚀 [{topic_name}] 주제로 구글 뉴스 검색 수집 중...")
         
-        search_query = topic_info[0]['query']
+        # 🛠️ 수정: 리스트 형태([])든 딕셔너리 형태({})든 알아서 검색어를 뽑아내도록 처리
+        if isinstance(topic_info, list):
+            search_query = topic_info[0]['query']
+        else:
+            search_query = topic_info['query']
+            
         n_title, n_content, n_link, n_image_url = fetch_news_by_topic(topic_name, search_query)
-        # n_title, n_content, n_link, n_image_url = fetch_news_by_topic(topic_info)
-
-
+        
         if not n_title:
             print(f"🛑 [{topic_name}] 관련 새로운 뉴스가 없습니다. 종료합니다.")
             exit()

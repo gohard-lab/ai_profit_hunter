@@ -36,7 +36,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 # 종합뉴스 ID가 99라고 가정할 때
-TOTAL_NEWS_CAT_ID = 48
+TOTAL_NEWS_CAT_ID = 47  #종합뉴스
 
 # --- [토픽 설정 정보 추가] ---
 TOPIC_CONFIG = {

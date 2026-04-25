@@ -171,29 +171,74 @@ def fetch_news_by_topic(topic_name, search_query):
             
     return None, None, None, None
 
+# def rewrite_with_gpt(original_title, original_content, topic_prompt):
+#     """주제별 맞춤형 페르소나로 재작성"""
+#     prompt = f"""
+#     당신은 '잡학다식 개발자'라는 블로그를 운영하는 지적이고 솔직 담백한 개발자입니다.
+#     아래 뉴스 기사를 읽고, 독자들에게 유익한 정보를 전달하는 블로그 포스팅으로 재작성해주세요.
+    
+#     [특별 지시사항]: {topic_prompt}
+    
+#     - 말투: 차분하고 논리적이며, 불필요한 수식어는 뺍니다.
+#     - 형식: 마크다운(Markdown)을 사용해 가독성을 높입니다.
+#     - 금기: 'Tired' 같은 유치한 말장난, 오버하는 말투 절대 금지. 출처(CITE) 표기 생략.
+#     - 구조: 서론(이슈 소개) - 본론(핵심 분석) - 결론(개발자로서의 견해)
+    
+#     제목: {original_title}
+#     본문 내용: {original_content}
+#     """
+    
+#     response = client.chat.completions.create(
+#         model="gpt-4o",
+#         messages=[{"role": "user", "content": prompt}]
+#     )
+#     return response.choices[0].message.content
+
 def rewrite_with_gpt(original_title, original_content, topic_prompt):
-    """주제별 맞춤형 페르소나로 재작성"""
+    """주제별 맞춤형 페르소나로 재작성 및 영어 슬러그 생성"""
+    
     prompt = f"""
     당신은 '잡학다식 개발자'라는 블로그를 운영하는 지적이고 솔직 담백한 개발자입니다.
-    아래 뉴스 기사를 읽고, 독자들에게 유익한 정보를 전달하는 블로그 포스팅으로 재작성해주세요.
+    아래 뉴스 기사를 읽고, 독자들에게 유익한 정보를 전달하는 블로그 포스팅을 작성하세요.
     
     [특별 지시사항]: {topic_prompt}
     
     - 말투: 차분하고 논리적이며, 불필요한 수식어는 뺍니다.
-    - 형식: 마크다운(Markdown)을 사용해 가독성을 높입니다.
+    - 형식: 본문은 마크다운(Markdown)을 사용해 가독성을 높입니다.
     - 금기: 'Tired' 같은 유치한 말장난, 오버하는 말투 절대 금지. 출처(CITE) 표기 생략.
     - 구조: 서론(이슈 소개) - 본론(핵심 분석) - 결론(개발자로서의 견해)
+    - 추가 작업: 이 포스팅에 어울리는 SEO 친화적인 짧은 영어 URL 슬러그를 생성하세요. (예: apple-vision-pro-review)
+
+    반드시 아래 JSON 형식으로만 응답하세요:
+    {{
+      "content": "재작성된 마크다운 본문 전체",
+      "slug": "생성된-영어-url-슬러그"
+    }}
     
-    제목: {original_title}
-    본문 내용: {original_content}
+    원본 제목: {original_title}
+    원본 본문: {original_content}
     """
     
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            # JSON 모드를 활성화하여 응답의 안정성을 높입니다.
+            response_format={ "type": "json_object" },
+            messages=[{"role": "user", "content": prompt}]
+        )
+        
+        # JSON 결과 파싱
+        result = json.loads(response.choices[0].message.content)
+        
+        final_content = result.get("content", "")
+        english_slug = result.get("slug", "")
+        
+        return final_content, english_slug
 
+    except Exception as e:
+        print(f"❌ GPT 재가공 중 에러 발생: {e}")
+        return None, None
+    
 def get_og_image(news_url):
     """기사 원문에서 대표 이미지(og:image) 주소를 추출합니다."""
     try:
@@ -321,7 +366,14 @@ if __name__ == "__main__":
             # 4. 제미니(Gemini) AI 재가공
             print(f"🤖 AI 재가공 중 (페르소나: {topic_name})...")
             # rewrite_with_gpt 함수 내부에서 Gemini API를 호출하도록 설정되어 있어야 합니다.
-            final_text = rewrite_with_gpt(n_title, n_content, base_prompt) 
+            final_text, g_slug = rewrite_with_gpt(n_title, n_content, base_prompt)
+            # final_text = rewrite_with_gpt(n_title, n_content, base_prompt) 
+
+            if final_text:
+                print(f"🔗 생성된 슬러그: {g_slug}")
+                # 워드프레스 전송 시 slug 인자를 추가합니다.
+                post_to_wordpress(n_title, html_content, info_dict["cat_id"], info_dict["tag_ids"], media_id, n_link, slug=g_slug)
+                
 
             if not final_text:
                 print(f"⚠️ [{topic_name}] GPT 가공 실패.")
@@ -339,13 +391,23 @@ if __name__ == "__main__":
                 info_dict["cat_id"], 
                 info_dict["tag_ids"], 
                 media_id, 
-                n_link
+                n_link,
+                slug=g_slug  # 👈 이 부분이 영문 주소를 만드는 핵심!
             )
 
             print(f"✅ [{topic_name}] 발행 완료!")
-            
+
+            # 사용 통계 로그 기록 (트래커 연동)
+            log_app_usage("news_auto_poster", "post_completed", details={
+                "topic": topic_name, 
+                "slug": g_slug,
+                "cat_id": info_dict["cat_id"]
+            })
+
             # 서버 및 API 부하 방지를 위해 각 포스팅 사이에 잠시 휴식
-            time.sleep(10)
+            delay = random.randint(30, 180) # 30초에서 3분 사이 랜덤 대기
+            print(f"💤 봇 차단 방지를 위해 {delay}초간 휴식 후 다음 카테고리로 이동합니다...")
+            time.sleep(delay)
 
         except Exception as e:
             print(f"❗ [{topic_name}] 실행 중 에러 발생: {e}")

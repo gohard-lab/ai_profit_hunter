@@ -372,37 +372,34 @@ if __name__ == "__main__":
             final_text, g_slug = rewrite_with_gpt(n_title, n_content, base_prompt)
             # final_text = rewrite_with_gpt(n_title, n_content, base_prompt) 
 
-            if final_text:
-                # 마크다운 -> HTML 변환
-                print("🔄 HTML 변환 및 워드프레스 전송 준비...")
-                html_content = markdown.markdown(final_text, extensions=['extra'])
-
-                # 메인 루프 내부
-                info_dict = topic_info[0] if isinstance(topic_info, list) else topic_info
-
-                # 1. 원래 카테고리 ID와 종합뉴스 ID를 합친 리스트를 만듭니다.
-                target_categories = [info_dict["cat_id"], TOTAL_NEWS_CAT_ID]
-
-                print(f"🔗 생성된 슬러그: {g_slug}")
-                # 워드프레스 전송 시 slug 인자를 추가합니다.
-                post_to_wordpress(n_title, html_content, info_dict["cat_id"], info_dict["tag_ids"], media_id, n_link, slug=g_slug)
-                
-
+            # [체크] AI 가공 실패 시 다음 토픽으로 패스
             if not final_text:
-                print(f"⚠️ [{topic_name}] GPT 가공 실패.")
+                print(f"⚠️ [{topic_name}] GPT 가공 실패. 건너뜁니다.")
                 continue
             
-            # 6. 워드프레스 전송 (각 토픽에 설정된 cat_id, tag_ids로 정확히 배달)
-            print(f"🚀 워드프레스 발행 중... (카테고리 ID: {info_dict.get('cat_id')})")
+            # 마크다운 -> HTML 변환
+            print("🔄 HTML 변환 및 워드프레스 전송 준비...")
+            html_content = markdown.markdown(final_text, extensions=['extra'])
+
+            # 메인 루프 내부
+            info_dict = topic_info[0] if isinstance(topic_info, list) else topic_info
+
+            # [자동화] 전용 카테고리와 종합뉴스 ID를 합침
+            # TOTAL_NEWS_CAT_ID는 코드 상단에 정의되어 있어야 합니다.
+            target_categories = [info_dict["cat_id"], TOTAL_NEWS_CAT_ID]
+
+            # 6. 워드프레스 발행 (딱 한 번만 호출!)
+            print(f"🔗 생성된 슬러그: {g_slug}")
+            print(f"🚀 워드프레스 발행 중... (전송 ID들: {target_categories})")
+            
             post_to_wordpress(
                 n_title, 
                 html_content, 
-                target_categories, # 👈 리스트로 전달
-                # info_dict["cat_id"], 
+                target_categories, # 👈 리스트로 통합 전달
                 info_dict["tag_ids"], 
                 media_id, 
                 n_link,
-                slug=g_slug  # 👈 이 부분이 영문 주소를 만드는 핵심!
+                slug=g_slug
             )
 
             print(f"✅ [{topic_name}] 발행 완료!")
@@ -411,7 +408,7 @@ if __name__ == "__main__":
             log_app_usage("news_auto_poster", "post_completed", details={
                 "topic": topic_name, 
                 "slug": g_slug,
-                "cat_id": info_dict["cat_id"]
+                "cat_id": target_categories
             })
 
             # 서버 및 API 부하 방지를 위해 각 포스팅 사이에 잠시 휴식

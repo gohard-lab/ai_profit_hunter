@@ -370,6 +370,10 @@ if __name__ == "__main__":
             # final_text = rewrite_with_gpt(n_title, n_content, base_prompt) 
 
             if final_text:
+                # 마크다운 -> HTML 변환
+                print("🔄 HTML 변환 및 워드프레스 전송 준비...")
+                html_content = markdown.markdown(final_text, extensions=['extra'])
+
                 print(f"🔗 생성된 슬러그: {g_slug}")
                 # 워드프레스 전송 시 slug 인자를 추가합니다.
                 post_to_wordpress(n_title, html_content, info_dict["cat_id"], info_dict["tag_ids"], media_id, n_link, slug=g_slug)
@@ -378,10 +382,6 @@ if __name__ == "__main__":
             if not final_text:
                 print(f"⚠️ [{topic_name}] GPT 가공 실패.")
                 continue
-
-            # 5. 마크다운 -> HTML 변환
-            print("🔄 HTML 변환 및 워드프레스 전송 준비...")
-            html_content = markdown.markdown(final_text, extensions=['extra'])
             
             # 6. 워드프레스 전송 (각 토픽에 설정된 cat_id, tag_ids로 정확히 배달)
             print(f"🚀 워드프레스 발행 중... (카테고리 ID: {info_dict.get('cat_id')})")

@@ -35,6 +35,9 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+# 종합뉴스 ID가 99라고 가정할 때
+TOTAL_NEWS_CAT_ID = 48
+
 # --- [토픽 설정 정보 추가] ---
 TOPIC_CONFIG = {
     "F1_모터스포츠": {
@@ -374,6 +377,12 @@ if __name__ == "__main__":
                 print("🔄 HTML 변환 및 워드프레스 전송 준비...")
                 html_content = markdown.markdown(final_text, extensions=['extra'])
 
+                # 메인 루프 내부
+                info_dict = topic_info[0] if isinstance(topic_info, list) else topic_info
+
+                # 1. 원래 카테고리 ID와 종합뉴스 ID를 합친 리스트를 만듭니다.
+                target_categories = [info_dict["cat_id"], TOTAL_NEWS_CAT_ID]
+
                 print(f"🔗 생성된 슬러그: {g_slug}")
                 # 워드프레스 전송 시 slug 인자를 추가합니다.
                 post_to_wordpress(n_title, html_content, info_dict["cat_id"], info_dict["tag_ids"], media_id, n_link, slug=g_slug)
@@ -388,7 +397,8 @@ if __name__ == "__main__":
             post_to_wordpress(
                 n_title, 
                 html_content, 
-                info_dict["cat_id"], 
+                target_categories, # 👈 리스트로 전달
+                # info_dict["cat_id"], 
                 info_dict["tag_ids"], 
                 media_id, 
                 n_link,

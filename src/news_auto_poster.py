@@ -283,7 +283,7 @@ def upload_image_to_wp(image_url):
         print(f"⚠️ 미디어 업로드 실패: {e}")
         return None
 
-def post_to_wordpress(title, content, cat_ids, tag_ids, media_id=None, news_link=None):
+def post_to_wordpress(title, content, cat_ids, tag_ids, media_id=None, news_link=None, slug=None):
     """글을 발행하고, 성공 시 Supabase에 링크 정보를 포함하여 기록합니다."""
     user_credentials = f"{WP_USER}:{WP_APP_PASS}"
     base64_credentials = base64.b64encode(user_credentials.encode()).decode()

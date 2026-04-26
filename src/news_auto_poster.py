@@ -38,7 +38,7 @@ TOTAL_NEWS_CAT_ID = 47
 # --- [토픽 설정 정보] ---
 TOPIC_CONFIG = {
     "F1_모터스포츠": {
-        "query": '"F1" OR "MOTOR RACING" OR "WEC"',
+        "query": '"FIA" OR "F1" OR "MOTOR RACING" OR "WEC"',
         "cat_id": 14,
         "tag_ids": [20],
         "prompt": "자동차 전문 기자이자 M2 오너인 개발자 입장에서 F1 기술이 양산차에 미치는 영향을 차분하고 논리적으로 분석해 줘."

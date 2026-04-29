@@ -1,61 +1,111 @@
 import os
 import requests
 from requests.auth import HTTPBasicAuth
-from supabase import create_client
 from dotenv import load_dotenv
+from supabase import create_client
+from googleapiclient.discovery import build
+from datetime import datetime
 
-# .env 파일에서 환경변수 로드
+# Load environment variables
 load_dotenv()
 
-# 워드프레스 설정
-WP_URL = "https://your-blog.com/wp-json/wp/v2/posts"
+# Configuration
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+YOUTUBE_CHANNEL_ID = os.getenv("YOUTUBE_CHANNEL_ID")
+WP_URL = f"{os.getenv('WP_URL')}/wp-json/wp/v2/posts"
 WP_USER = os.getenv("WP_USER")
-WP_APP_PW = os.getenv("WP_APP_PASSWORD") # 워드프레스 앱 비밀번호
-
-# Supabase 설정
+WP_APP_PW = os.getenv("WP_APP_PASSWORD")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-def post_to_wordpress(title, content, category_id, tags):
-    """워드프레스 REST API를 이용한 포스팅"""
+# Constants for this specific bot
+APP_NAME = "youtube_hub_sync"
+
+# Initialize Clients
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+
+def send_telegram_msg(message):
+    """Send HTML formatted notification to Telegram"""
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
+    try:
+        requests.post(url, json=payload, timeout=10)
+    except Exception as e:
+        print(f"Telegram Error: {e}")
+
+def get_latest_videos():
+    """Fetch the latest videos from the YouTube channel"""
+    request = youtube.search().list(
+        channelId=YOUTUBE_CHANNEL_ID,
+        part="snippet",
+        order="date",
+        maxResults=5,
+        type="video"
+    )
+    response = request.execute()
+    return response.get("items", [])
+
+def post_to_wordpress(title, description, video_id):
+    """Post YouTube content to WordPress via REST API"""
+    video_url = f"https://www.youtube.com/watch?v={video_id}"
+    
+    # Global/Standard content structure
+    content = f"""
+    <p>{description}</p>
+    <div class="wp-block-embed is-type-video is-provider-youtube">
+        <figure class="wp-block-embed__wrapper">
+            {video_url}
+        </figure>
+    </div>
+    <br>
+    <p>※ 본 프로그램은 더 나은 서비스 제공과 에러 수정을 위해 익명화된 최소한의 사용 통계(기능 클릭 수 등)를 수집합니다. (개인 식별 정보는 일절 수집하지 않습니다.)</p>
+    """
+    
     payload = {
         "title": title,
         "content": content,
         "status": "publish",
-        "categories": [category_id],
-        "tags": tags
+        "categories": [1], # Replace with your WP category ID
+        "tags": [10, 11]    # Replace with your WP tag IDs
     }
     
-    res = requests.post(
-        WP_URL,
-        json=payload,
-        auth=HTTPBasicAuth(WP_USER, WP_APP_PW)
-    )
+    res = requests.post(WP_URL, json=payload, auth=HTTPBasicAuth(WP_USER, WP_APP_PW), timeout=20)
+    return res.status_code == 201
+
+def main():
+    print(f"[{datetime.now()}] Starting YouTube Hub Sync...")
+    videos = get_latest_videos()
     
-    if res.status_code == 201:
-        print(f"✅ 포스팅 성공: {title}")
-        return True
-    return False
-
-def sync_new_content():
-    """신규 콘텐츠(유튜브, 스트림릿 등) 감지 및 동기화 로직"""
-    # 1. Supabase에서 아직 워드프레스에 올라가지 않은 데이터 조회
-    # (이미 만들어두신 테이블에 'is_posted' 컬럼이 있다고 가정)
-    new_apps = supabase.table("apps_registry").select("*").eq("is_posted", False).execute()
-
-    for app in new_apps.data:
-        title = f"[신규 배포] {app['app_name']}"
-        body = f"""
-        <h3>{app['description']}</h3>
-        <p>새로운 스트림릿 앱이 배포되었습니다.</p>
-        <a href="{app['url']}" target="_blank">👉 앱 바로가기</a>
-        """
+    for video in videos:
+        v_id = video['id']['videoId']
+        v_title = video['snippet']['title']
         
-        # 워드프레스 발행 시도
-        if post_to_wordpress(title, body, category_id=5, tags=["Streamlit", "Python"]):
-            # 성공 시 DB 상태 업데이트
-            supabase.table("apps_registry").update({"is_posted": True}).eq("id", app["id"]).execute()
+        # 1. Check for duplicates using app_name and content_id
+        check = supabase.table("usage_logs") \
+            .select("id") \
+            .eq("app_name", APP_NAME) \
+            .eq("content_id", v_id) \
+            .execute()
+        
+        if not check.data:
+            print(f"New video found: {v_title}")
+            # 2. Attempt to post to WordPress
+            if post_to_wordpress(v_title, video['snippet']['description'], v_id):
+                # 3. Log success to usage_logs
+                supabase.table("usage_logs").insert({
+                    "app_name": APP_NAME,
+                    "content_id": v_id,
+                    "action": "wp_post_success",
+                    "details": {"title": v_title, "source": "youtube"}
+                }).execute()
+                
+                # Telegram Notification (Omitted for brevity)
+                send_telegram_msg(f"🚀 <b>Posted:</b> {v_title}")
+        else:
+            print(f"Already synced: {v_title}")
 
 if __name__ == "__main__":
-    sync_new_content()
+    main()

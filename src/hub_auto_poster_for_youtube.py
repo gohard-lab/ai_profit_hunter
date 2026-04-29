@@ -23,9 +23,45 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 # Constants for this specific bot
 APP_NAME = "youtube_hub_sync"
 
+# 워드프레스 ID는 관리자 페이지에서 확인 후 숫자로 수정.
+TAG_MAP = {
+    "Streamlit": 54,
+    "수집": 62,
+    "크롤링": 55,
+    "Supabase": 56,
+    "M2": 65,
+    "F1": 58,
+    "자동차": 59,
+    "스릴러": 18,
+    "미스터리": 66,
+    "아날로그": 37,
+    "카세트": 24,
+    "오디오": 61,
+    "수집": 62,
+    "일기": 63,
+    "튜토리얼": 74,
+    "파이썬": 67,
+    "잡학다식": 66
+}
+
+DEFAULT_TAGS = [53]  # '유튜브' 같은 기본 태그 ID
+
 # Initialize Clients
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+
+
+def get_dynamic_tags(title, description):
+    """제목과 설명에서 키워드를 찾아 태그 ID 리스트를 반환"""
+    tags = set(DEFAULT_TAGS) # 기본 태그 포함 (중복 방지 위해 set 사용)
+    
+    combined_text = (title + " " + description).lower()
+    
+    for keyword, tag_id in TAG_MAP.items():
+        if keyword.lower() in combined_text:
+            tags.add(tag_id)
+            
+    return list(tags)
 
 def send_telegram_msg(message):
     """Send HTML formatted notification to Telegram"""
@@ -63,13 +99,15 @@ def post_to_wordpress(title, description, video_id):
     <br>
     <p>※ 본 프로그램은 더 나은 서비스 제공과 에러 수정을 위해 익명화된 최소한의 사용 통계(기능 클릭 수 등)를 수집합니다. (개인 식별 정보는 일절 수집하지 않습니다.)</p>
     """
-    
+    # 자동으로 관련 태그들만 골라냅니다
+    target_tags = get_dynamic_tags(title, description)
+
     payload = {
         "title": title,
         "content": content,
         "status": "publish",
-        "categories": [1], # Replace with your WP category ID
-        "tags": [10, 11]    # Replace with your WP tag IDs
+        "categories": [5],  # 유튜브 카테고리 고정
+        "tags": target_tags # 자동으로 선별된 태그
     }
     
     res = requests.post(WP_URL, json=payload, auth=HTTPBasicAuth(WP_USER, WP_APP_PW), timeout=20)

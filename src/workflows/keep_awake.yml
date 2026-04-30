@@ -1,0 +1,27 @@
+name: Wake Up All Apps
+
+on:
+  schedule:
+    - cron: '0 * * * *' # 매 시간 정각 실행
+  workflow_dispatch:
+
+jobs:
+  ping_apps:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Multiple URLs
+        run: |
+          # 깨워야 할 주소들을 아래에 나열하세요
+          urls=(
+            "https://carcostsimulator-e9prevei4pq9cap535vfp8.streamlit.app/"
+            "https://drivingdashboard-t8exrwypqvsce3gdq3cksd.streamlit.app/"
+            "https://f1-race-analyzer-9pbapphbkgmo6rguympwshf.streamlit.app/"
+            "https://kcarcrawler-5ryuwuw8izgjmqphppweyv.streamlit.app/"
+            "https://schoolzonefinesim.streamlit.app/"
+            "https://cheiridrivingdashboard-cgpdknof3nnvufwaeyzkhr.streamlit.app/"
+          )
+
+          for url in "${urls[@]}"; do
+            echo "Pinging $url..."
+            curl -I -s "$url" | head -n 1
+          done

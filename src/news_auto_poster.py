@@ -22,7 +22,10 @@ from tracker_exe import log_app_usage
 # --- [설정 정보] ---
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-WP_URL = "https://gohard.pe.kr/index.php?rest_route=/wp/v2/posts/"
+# WP_URL = "https://gohard.pe.kr/index.php?rest_route=/wp/v2/posts/"
+# 수정 제안: 뒤에 붙은 'posts/'를 떼고 기본 경로만 설정
+# 이렇게 해두면 봇이 자동으로 뒤에 /posts를 붙여서 .../wp/v2/posts로 완성해 줌.
+WP_URL = "https://gohard.pe.kr/index.php?rest_route=/wp/v2"
 WP_USER = os.getenv("WP_USER")
 WP_APP_PASS = os.getenv("WP_APP_PASS")
 

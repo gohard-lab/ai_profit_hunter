@@ -3,6 +3,7 @@ import oci
 import time
 import json
 import os
+import sys
 import requests
 from dotenv import load_dotenv # 추가
 from tracker_exe import log_app_usage

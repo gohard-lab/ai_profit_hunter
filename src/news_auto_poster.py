@@ -152,7 +152,12 @@ def fetch_news_by_topic(topic_name, search_query):
     for item in news_items:
         real_url = item['link']
         title = item['title'].replace('<b>', '').replace('</b>', '').replace('&quot;', '"')
-        
+
+        # 🚨 차단 키워드 필터링 추가
+        if any(word in title for word in ['프로모션', '할인', '출시', '이벤트']):
+            print(f"  ⏩ [광고성 패스] {title[:30]}...")
+            continue
+
         # 여기서 먼저 중복 검사
         if is_already_posted(real_url):
             print(f"   ⏩ [중복 패스] 이미 발행된 기사입니다: {title[:30]}...")

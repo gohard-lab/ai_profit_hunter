@@ -8,18 +8,33 @@ from tracker_exe import log_app_usage # Usage tracking
 
 
 # Get the directory where the script is located
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.realpath(__file__))
+KEY_FILE_PATH = os.path.join(BASE_DIR, "oci_private_key.pem").strip()
+
+# Check if the key file exists before initializing the client
+if not os.path.exists(KEY_FILE_PATH):
+    print(f"❌ Error: Key file not found at {KEY_FILE_PATH}")
+    exit(1)
 
 # --- OCI Configuration ---
 config = {
     "user": "ocid1.user.oc1..aaaaaaaauullmvotspnykrv5la4b2pqzaea4b37cxcy7jr57v6uz2g5r74pa",
-    "key_file": os.path.join(BASE_DIR, "oci_private_key.pem"), # Path to your API private key
-    "fingerprint": "ce:b0:11:1a:f3:12:76:ca:de:17:35:35:f6:a3:8a:6b", # Your API key fingerprint
-    "tenancy": "ocid1.tenancy.oc1..aaaaaaaaz44gcwihvfpgevc7btgw6gy63qcvihww5scvqfo3nd7uylvtwmna", # Your Tenancy OCID
+    "key_file": KEY_FILE_PATH, 
+    "fingerprint": "ce:b0:11:1a:f3:12:76:ca:de:17:35:35:f6:a3:8a:6b",
+    "tenancy": "ocid1.tenancy.oc1..aaaaaaaaz44gcwihvfpgevc7btgw6gy63qcvihww5scvqfo3nd7uylvtwmna",
     "region": "us-phoenix-1"
 }
 
+# config = {
+#     "user": "ocid1.user.oc1..aaaaaaaauullmvotspnykrv5la4b2pqzaea4b37cxcy7jr57v6uz2g5r74pa",
+#     "key_file": os.path.join(BASE_DIR, "oci_private_key.pem"), # Path to your API private key
+#     "fingerprint": "ce:b0:11:1a:f3:12:76:ca:de:17:35:35:f6:a3:8a:6b", # Your API key fingerprint
+#     "tenancy": "ocid1.tenancy.oc1..aaaaaaaaz44gcwihvfpgevc7btgw6gy63qcvihww5scvqfo3nd7uylvtwmna", # Your Tenancy OCID
+#     "region": "us-phoenix-1"
+# }
+
 # --- Telegram Settings ---
+# Ensure these environment variables are set in your shell
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("CHAT_ID")
 

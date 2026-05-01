@@ -4,12 +4,22 @@ import time
 import json
 import os
 import requests
-from tracker_exe import log_app_usage # Usage tracking
+from dotenv import load_dotenv # 추가
+from tracker_exe import log_app_usage
 
 
-# Get the directory where the script is located
-BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-KEY_FILE_PATH = os.path.join(BASE_DIR, "oci_private_key.pem").strip()
+# 1. Get the absolute path of the directory containing this script
+# This ensures it works regardless of where you run it from.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 3. Use absolute path for the key file to avoid "FileNotFoundError"
+KEY_FILE_PATH = os.path.join(BASE_DIR, "oci_private_key.pem")
+
+# 2. Add the parent directory (AI_profit_hunter) to sys.path
+# This allows 'import tracker_exe' to work even if the script is in 'src/'.
+PARENT_DIR = os.path.dirname(BASE_DIR)
+if PARENT_DIR not in sys.path:
+    sys.path.append(PARENT_DIR)
 
 # Check if the key file exists before initializing the client
 if not os.path.exists(KEY_FILE_PATH):
@@ -19,7 +29,7 @@ if not os.path.exists(KEY_FILE_PATH):
 # --- OCI Configuration ---
 config = {
     "user": "ocid1.user.oc1..aaaaaaaauullmvotspnykrv5la4b2pqzaea4b37cxcy7jr57v6uz2g5r74pa",
-    "key_file": KEY_FILE_PATH, 
+    "key_file": KEY_FILE_PATH, # Now using the absolute path
     "fingerprint": "ce:b0:11:1a:f3:12:76:ca:de:17:35:35:f6:a3:8a:6b",
     "tenancy": "ocid1.tenancy.oc1..aaaaaaaaz44gcwihvfpgevc7btgw6gy63qcvihww5scvqfo3nd7uylvtwmna",
     "region": "us-phoenix-1"

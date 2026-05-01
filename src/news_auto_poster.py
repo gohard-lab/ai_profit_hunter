@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 from news_provider import fetch_naver_news, fetch_direct_rss, RSS_FEEDS
 from tracker_exe import log_app_usage 
+from newspaper import Article, Config # Config 추가
 
 # --- [설정 정보] ---
 load_dotenv()
@@ -153,6 +154,11 @@ def fetch_news_by_topic(topic_name, search_query):
         real_url = item['link']
         title = item['title'].replace('<b>', '').replace('</b>', '').replace('&quot;', '"')
 
+        # 🚨 뉴욕타임즈 등 외신이나 차단이 심한 사이트 제외
+        if "nytimes.com" in real_url or "economist.com" in real_url:
+            print(f"  ⏩ [외신 패스] 차단 가능성이 높은 사이트입니다.")
+            continue
+        
         # 🚨 차단 키워드 필터링 추가
         if any(word in title for word in ['프로모션', '할인', '출시', '이벤트']):
             print(f"  ⏩ [광고성 패스] {title[:30]}...")
@@ -165,9 +171,15 @@ def fetch_news_by_topic(topic_name, search_query):
             
         print(f"👉 새 기사 본문 추출 시도 중: {title[:40]}...")
         
+        # 브라우저처럼 보이기 위한 설정 추가
+        config = Config()
+        config.browser_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
         try:
-            article = Article(real_url, language='ko')
+            # article 생성 시 config를 넘겨줌.
+            article = Article(real_url, config=config, language='ko') 
             article.download()
+            
             article.parse()
             
             content = article.text.strip()[:1500]

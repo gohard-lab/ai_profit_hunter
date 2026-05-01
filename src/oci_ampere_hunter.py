@@ -6,6 +6,7 @@ import os
 import requests
 from tracker_exe import log_app_usage # Usage tracking
 
+
 # Get the directory where the script is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 

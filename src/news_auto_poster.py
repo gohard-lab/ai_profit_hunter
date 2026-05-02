@@ -42,7 +42,7 @@ TOTAL_NEWS_CAT_ID = 47
 # --- [토픽 설정 정보] ---
 TOPIC_CONFIG = {
     "F1_모터스포츠": {
-        "query": '"FIA" OR "F1" OR "MOTOR RACING" OR "WEC"',
+        "query": '"FIA" OR "F1" OR "MOTOR RACING" OR "WEC" OR "Formula 1" OR "포뮬러원" OR "모터스포츠" OR "그랑프리"',
         "cat_id": 14,
         "tag_ids": [20],
         "prompt": "자동차 전문 기자이자 M2 오너인 개발자 입장에서 F1 기술이 양산차에 미치는 영향을 차분하고 논리적으로 분석해 줘."
@@ -188,13 +188,16 @@ def fetch_news_by_topic(topic_name, search_query):
             article.parse()
             
             content = article.text.strip()[:1500]
-            if len(content) > 100:
-                print("   ✅ 추출 성공! (이미지는 저작권 보호를 위해 수집하지 않습니다)")
-                # 🚨 핵심 수정: article.top_image 대신 무조건 None을 반환하여 이미지 수집 원천 차단
+            
+            # 💡 수정 포인트: 기준을 50자로 낮추고, 실패 시 이유를 명확히 출력합니다.
+            if len(content) > 50:
+                print(f"   ✅ 추출 성공! (본문 길이: {len(content)}자 / 이미지는 수집 X)")
                 return title, content, real_url, None
+            else:
+                print(f"   ㄴ ⚠️ 내용 부족 패스: 텍스트가 너무 짧습니다({len(content)}자). 포토 기사나 봇 차단 화면일 확률이 높습니다.")
             
         except Exception as e:
-            print(f"   ㄴ ⚠️ 추출 실패: {e}")
+            print(f"   ㄴ ⚠️ 추출 에러: {e}")
             
     return None, None, None, None
 

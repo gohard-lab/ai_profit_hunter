@@ -76,5 +76,10 @@ RSS_FEEDS = {
     ],
     "해외 엔터이슈": [
         "https://news.google.com/rss/search?q=할리우드+OR+넷플릭스+OR+빌보드&hl=ko&gl=KR&ceid=KR:ko"
-    ]
+    ],
+    "F1_모터스포츠": [
+        "https://www.motorsport.com/rss/f1/news/",  # 모터스포츠닷컴 F1 (차량 기술 및 에어로다이내믹 분석 탁월)
+        "https://www.autosport.com/rss/f1/news/",    # 오토스포츠 F1 (오랜 전통과 깊이 있는 취재)
+        "https://feeds.bbci.co.uk/sport/formula1/rss.xml" # BBC 스포츠 F1 (공신력 및 정확한 팩트 체크)
+    ],
 }

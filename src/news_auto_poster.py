@@ -130,6 +130,16 @@ def is_already_posted(link):
         print(f"⚠️ DB 조회 실패: {e}")
         return False
 
+def fetch_trending_keywords():
+    """대한민국 실시간 인기 급상승 검색어 5개를 가져옵니다."""
+    url = "https://trends.google.com/trends/trendingsearches/daily/rss?geo=KR"
+    feed = feedparser.parse(url)
+
+    # 제목(Title)에 키워드가 들어있습니다.
+    keywords = [entry.title for entry in feed.entries[:5]]
+
+    return keywords
+
 def fetch_news_by_topic(topic_name, search_query):
     # 1. Supabase 트래커 기록
     usage_details = json.dumps({
@@ -303,6 +313,70 @@ def post_to_wordpress(title, content, cat_ids, tag_ids, media_id=None, news_link
         print(f"❌ 실패: {res.status_code} - {res.text}")
 
 if __name__ == "__main__":
+    
+    # --- 1. 실시간 트렌드 핫이슈 처리 ---
+    print("\n🔥 실시간 트렌드 뉴스 수집 시작...")
+    try:
+        hot_keywords = fetch_trending_keywords()
+        for keyword in hot_keywords:
+            topic_name = "인기" 
+            log_app_usage("news_auto_poster", "trending_topic_started", details={"keyword": keyword, "category": topic_name})
+            
+            print(f"\n{'='*50}")
+            print(f"🚀 실시간 트렌드 [{keyword}] 카테고리 작업 시작...")
+            
+            # 뉴스 수집 (검색어로 실시간 키워드 투입)
+            n_title, n_content, n_link, n_image_url = fetch_news_by_topic(topic_name, keyword)
+            
+            if not n_title:
+                print(f"🛑 [{keyword}] 관련된 '새로운' 뉴스가 없어 건너뜁니다.")
+                continue
+                
+            print(f"🆕 새 뉴스 발견! 가공을 시작합니다: {n_title}")
+            
+            # 이미지 처리
+            media_id = None
+            if n_image_url:
+                print("📤 워드프레스에 이미지 업로드 중...")
+                media_id = upload_image_to_wp(n_image_url)
+
+            # 제미니(Gemini) AI 재가공
+            print(f"🤖 AI 재가공 중 (트렌드 키워드: {keyword})...")
+            base_prompt = "전문가의 시선으로 최신 이슈를 차분하고 명확하게 분석해서 작성해 주세요."
+            final_text, g_slug = rewrite_with_gpt(n_title, n_content, base_prompt)
+
+            if not final_text:
+                print(f"⚠️ [{keyword}] GPT 가공 실패. 건너뜁니다.")
+                continue
+            
+            # 마크다운 -> HTML 변환
+            print("🔄 HTML 변환 및 워드프레스 전송 준비...")
+            html_content = markdown.markdown(final_text, extensions=['extra'])
+
+            # 워드프레스 인기 카테고리 ID(48) 및 종합 뉴스 ID 포함
+            target_categories = [48, TOTAL_NEWS_CAT_ID] 
+
+            print(f"🔗 생성된 슬러그: {g_slug}")
+            print(f"🚀 워드프레스 발행 중... (전송 ID들: {target_categories})")
+            
+            post_to_wordpress(
+                n_title, 
+                html_content, 
+                target_categories, 
+                [], # 트렌드는 유동적이므로 고정 태그 생략
+                media_id, 
+                n_link,
+                slug=g_slug
+            )
+
+            delay = random.randint(30, 180) 
+            print(f"💤 봇 차단 방지를 위해 {delay}초간 휴식 후 다음 트렌드로 이동합니다...")
+            time.sleep(delay)
+            
+    except Exception as e:
+        print(f"❗ 실시간 트렌드 처리 중 에러 발생: {e}")
+
+    # --- 2. 기존 TOPIC_CONFIG (고정 관심사) 처리 ---
     for topic_name in TOPIC_CONFIG.keys():
         try:
             topic_info = TOPIC_CONFIG[topic_name]
@@ -322,23 +396,19 @@ if __name__ == "__main__":
                 keywords = [k.replace('"', '').strip() for k in search_query.split(" OR ")]
                 search_query = random.choice(keywords)
                 
-            # 2. 뉴스 수집 엔진 가동 (중복 체크는 이미 이 안에서 끝납니다)
             n_title, n_content, n_link, n_image_url = fetch_news_by_topic(topic_name, search_query)
             
-            # 여기서 못 가져왔다는 건, 새로운 뉴스가 아예 없다는 뜻입니다.
             if not n_title:
                 print(f"🛑 [{topic_name}] 관련된 '새로운' 뉴스가 없어 건너뜁니다.")
                 continue
                 
             print(f"🆕 새 뉴스 발견! 가공을 시작합니다: {n_title}")
             
-            # 3. 이미지 처리
             media_id = None
             if n_image_url:
                 print("📤 워드프레스에 이미지 업로드 중...")
                 media_id = upload_image_to_wp(n_image_url)
 
-            # 4. 제미니(Gemini) AI 재가공
             print(f"🤖 AI 재가공 중 (페르소나: {topic_name})...")
             final_text, g_slug = rewrite_with_gpt(n_title, n_content, base_prompt)
 
@@ -346,13 +416,11 @@ if __name__ == "__main__":
                 print(f"⚠️ [{topic_name}] GPT 가공 실패. 건너뜁니다.")
                 continue
             
-            # 5. 마크다운 -> HTML 변환
             print("🔄 HTML 변환 및 워드프레스 전송 준비...")
             html_content = markdown.markdown(final_text, extensions=['extra'])
 
             target_categories = [info_dict["cat_id"], TOTAL_NEWS_CAT_ID]
 
-            # 6. 워드프레스 발행
             print(f"🔗 생성된 슬러그: {g_slug}")
             print(f"🚀 워드프레스 발행 중... (전송 ID들: {target_categories})")
             
@@ -365,9 +433,6 @@ if __name__ == "__main__":
                 n_link,
                 slug=g_slug
             )
-
-            # 💡 수정 포인트: 중복되던 트래커 기록 코드를 삭제했습니다. 
-            # (post_to_wordpress 함수 내부에서 완벽하게 기록합니다.)
 
             delay = random.randint(30, 180) 
             print(f"💤 봇 차단 방지를 위해 {delay}초간 휴식 후 다음 카테고리로 이동합니다...")

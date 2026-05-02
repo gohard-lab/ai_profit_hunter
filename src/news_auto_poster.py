@@ -164,59 +164,60 @@ def fetch_news_by_topic(topic_name, search_query):
         real_url = item['link']
         title = item['title'].replace('<b>', '').replace('</b>', '').replace('&quot;', '"')
 
-        # 🚨 뉴욕타임즈 등 외신이나 차단이 심한 사이트 제외
         if "nytimes.com" in real_url or "economist.com" in real_url:
             print(f"  ⏩ [외신 패스] 차단 가능성이 높은 사이트입니다.")
             continue
         
-        # 🚨 차단 키워드 필터링 추가
-        if any(word in title for word in ['프로모션', '할인', '출시', '이벤트']):
-            print(f"  ⏩ [광고성 패스] {title[:30]}...")
+        # 🚨 추가된 필터링: 단독, 특종, 속보 등 위험/어그로성 기사 배제
+        if any(word in title for word in ['단독', '특종', '속보', '프로모션', '할인', '출시', '이벤트']):
+            print(f"  ⏩ [위험/광고 패스] 단독 보도 또는 광고성 기사입니다: {title[:30]}...")
             continue
 
-        # 여기서 먼저 중복 검사
         if is_already_posted(real_url):
             print(f"   ⏩ [중복 패스] 이미 발행된 기사입니다: {title[:30]}...")
-            continue # 다음 뉴스로 넘어감
+            continue 
             
         print(f"👉 새 기사 본문 추출 시도 중: {title[:40]}...")
         
-        # 브라우저처럼 보이기 위한 설정 추가
         config = Config()
         config.browser_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
         try:
-            # article 생성 시 config를 넘겨줌.
             article = Article(real_url, config=config, language='ko') 
             article.download()
-            
             article.parse()
             
             content = article.text.strip()[:1500]
             if len(content) > 100:
-                print("   ✅ 추출 성공!")
-                # 성공하면 즉시 반환 (루프 종료)
-                return title, content, real_url, article.top_image
+                print("   ✅ 추출 성공! (이미지는 저작권 보호를 위해 수집하지 않습니다)")
+                # 🚨 핵심 수정: article.top_image 대신 무조건 None을 반환하여 이미지 수집 원천 차단
+                return title, content, real_url, None
             
         except Exception as e:
             print(f"   ㄴ ⚠️ 추출 실패: {e}")
             
-    # 모든 기사가 중복이거나 추출 실패일 때만 None 반환
     return None, None, None, None
 
-def rewrite_with_gpt(original_title, original_content, topic_prompt):
+# 파라미터에 original_link 추가
+def rewrite_with_gpt(original_title, original_content, original_link, topic_prompt):
     """주제별 맞춤형 페르소나로 재작성 및 영어 슬러그 생성"""
     prompt = f"""
-    당신은 '잡학다식 개발자'라는 블로그를 운영하는 지적이고 솔직 담백한 개발자입니다.
-    아래 뉴스 기사를 읽고, 독자들에게 유익한 정보를 전달하는 블로그 포스팅을 작성하세요.
+    당신은 IT/테크 및 다방면에 지식이 깊은 '잡학다식 개발자'입니다. 
+    단순한 기사 요약(스피닝)은 저작권 침해 위험이 있으므로 절대 금지합니다.
+    아래 기사의 '핵심 팩트(사실)'만 추출한 뒤, 당신의 페르소나를 반영하여 완전히 새로운 구조의 오리지널 칼럼을 작성하세요.
     
     [특별 지시사항]: {topic_prompt}
     
-    - 말투: 차분하고 논리적이며, 불필요한 수식어는 뺍니다.
-    - 형식: 본문은 마크다운(Markdown)을 사용해 가독성을 높입니다.
-    - 금기: 유치한 말장난, 오버하는 말투 절대 금지.
-    - 구조: 서론(이슈 소개) - 본론(핵심 분석) - 결론(개발자로서의 견해)
-    - 추가 작업: 이 포스팅에 어울리는 SEO 친화적인 짧은 영어 URL 슬러그를 생성하세요. (예: apple-vision-pro-review)
+    [작성 원칙]
+    1. 말투: 차분하고 지적이며 솔직 담백하게 작성하세요. 유치한 말장난이나 과장된 표현은 절대 금지합니다.
+    2. 구조: 
+       - 서론: 해당 이슈의 핵심 팩트 간략 소개
+       - 본론: 개발자/전문가의 시각에서 바라본 심층 분석 및 실무/현실 적용점
+       - 결론: 솔직한 견해 및 시사점 정리
+    3. 포맷: 가독성 높은 마크다운(Markdown) 적용 (적절한 소제목, 불렛포인트 활용)
+    4. 출처: 본문 맨 마지막에 아래와 같이 원문 출처를 마크다운 링크로 반드시 남기세요.
+       "👉 [원문 기사 보러가기]({original_link})"
+    5. SEO: 포스팅에 어울리는 SEO 친화적인 짧은 영어 URL 슬러그 생성 (예: future-of-ai-regulation)
 
     반드시 아래 JSON 형식으로만 응답하세요:
     {{
@@ -334,16 +335,13 @@ if __name__ == "__main__":
                 
             print(f"🆕 새 뉴스 발견! 가공을 시작합니다: {n_title}")
             
-            # 이미지 처리
+            # 🚨 이미지 처리 부분 통째로 삭제 및 media_id 고정
             media_id = None
-            if n_image_url:
-                print("📤 워드프레스에 이미지 업로드 중...")
-                media_id = upload_image_to_wp(n_image_url)
 
-            # 제미니(Gemini) AI 재가공
+            # 제미니(Gemini) AI 재가공 (n_link 파라미터 추가)
             print(f"🤖 AI 재가공 중 (트렌드 키워드: {keyword})...")
             base_prompt = "전문가의 시선으로 최신 이슈를 차분하고 명확하게 분석해서 작성해 주세요."
-            final_text, g_slug = rewrite_with_gpt(n_title, n_content, base_prompt)
+            final_text, g_slug = rewrite_with_gpt(n_title, n_content, n_link, base_prompt)
 
             if not final_text:
                 print(f"⚠️ [{keyword}] GPT 가공 실패. 건너뜁니다.")

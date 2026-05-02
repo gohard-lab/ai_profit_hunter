@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Ping Multiple URLs
         run: |
-          # 깨워야 할 주소들을 아래에 나열하세요
+          # List of target URLs to keep awake
           urls=(
             "https://carcostsimulator-e9prevei4pq9cap535vfp8.streamlit.app/"
             "https://drivingdashboard-t8exrwypqvsce3gdq3cksd.streamlit.app/"
@@ -23,5 +23,7 @@ jobs:
 
           for url in "${urls[@]}"; do
             echo "Pinging $url..."
-            curl -I -s "$url" | head -n 1
+            # -L follows redirects, -s is silent, -o saves output to null
+            curl -L -s -o /dev/null -w "Result Code: %{http_code}" "$url"
+            echo -e "\n---"
           done

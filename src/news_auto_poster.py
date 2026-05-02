@@ -408,7 +408,7 @@ if __name__ == "__main__":
                 media_id = upload_image_to_wp(n_image_url)
 
             print(f"🤖 AI 재가공 중 (페르소나: {topic_name})...")
-            final_text, g_slug = rewrite_with_gpt(n_title, n_content, base_prompt)
+            final_text, g_slug = rewrite_with_gpt(n_title, n_content, n_link, base_prompt)
 
             if not final_text:
                 print(f"⚠️ [{topic_name}] GPT 가공 실패. 건너뜁니다.")

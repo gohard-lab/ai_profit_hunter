@@ -22,8 +22,8 @@ jobs:
 
           for url in "${urls[@]}"; do
             echo "Pinging $url..."
-            # URL 뒤에 _stcore/health 를 붙여서 Streamlit 내부 API를 직접 찌릅니다.
-            # 이 방법은 리다이렉트 루프(47)를 피하면서도 앱을 확실히 깨웁니다.
-            curl -L -s -o /dev/null -A "Mozilla/5.0" -w "Result Code: %{http_code}" "${url}_stcore/health"
+            # -c, -b 옵션으로 쿠키를 저장하고 읽어옵니다. 
+            # -A 옵션으로 실제 윈도우 크롬 브라우저처럼 보이게 위장합니다.
+            curl -c cookies.txt -b cookies.txt -L -s -o /dev/null -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" -w "Result Code: %{http_code}" "$url"
             echo -e "\n---"
           done

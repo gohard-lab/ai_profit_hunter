@@ -22,8 +22,8 @@ jobs:
 
           for url in "${urls[@]}"; do
             echo "Pinging $url..."
-            # -L을 제거하여 리다이렉트 루프를 방지합니다. 
-            # 303 응답이 오면 서버가 요청을 받은 것이므로 '깨우기' 목적은 달성된 것입니다.
-            curl -s -o /dev/null -A "Mozilla/5.0" -w "Result Code: %{http_code}" "$url"
+            # URL 뒤에 _stcore/health 를 붙여서 Streamlit 내부 API를 직접 찌릅니다.
+            # 이 방법은 리다이렉트 루프(47)를 피하면서도 앱을 확실히 깨웁니다.
+            curl -L -s -o /dev/null -A "Mozilla/5.0" -w "Result Code: %{http_code}" "${url}_stcore/health"
             echo -e "\n---"
           done

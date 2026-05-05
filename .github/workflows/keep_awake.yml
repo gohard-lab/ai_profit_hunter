@@ -20,18 +20,16 @@ jobs:
           enable-cache: true
           
       - name: Setup Python & Install Dependencies
-        run: uv pip install --system -r pyproject.toml
+        run: |
+          # 1. 시스템 영역 대신 우리만의 독립된 가상 환경을 만듭니다.
+          uv venv
+          # 2. --system 옵션을 빼고 가상 환경 안에 안전하게 패키지를 설치합니다.
+          uv pip install -r pyproject.toml
         
       - name: Run Headless Browser Script
         run: |
-          echo "현재 위치의 파일 목록:"
-          ls -al
-          
-          echo "sc 폴더로 이동:"
+          echo "src 폴더로 이동:"
           cd src
           
-          echo "sc 폴더 안의 파일 목록:"
-          ls -al
-          
-          # 주의: 실제 파이썬 파일명과 아래 이름이 정확히 일치해야 합니다!
-          python keep_awake_bot.py
+          # 3. uv run 명령어를 사용하면 가상 환경의 파이썬으로 알아서 봇을 실행해 줍니다.
+          uv run keep_awake_bot.py

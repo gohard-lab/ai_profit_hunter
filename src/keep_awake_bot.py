@@ -22,7 +22,7 @@ URLS = [
 
 def wake_apps():
     options = Options()
-    options.add_argument("--headless=new") # 에러 방지를 위해 최신 헤드리스 모드 필수
+    options.add_argument("--headless=new") # 에러 방지를 위해 최신 헤드리스 모드 필수,
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36")
@@ -39,7 +39,7 @@ def wake_apps():
         except Exception as e:
             print(f"-> Error: {e}")
             
-    driver.quit()
+    driver.quit() # 헤드리스 실행 후 kill 하는 부분(메모리 정리)
 
 if __name__ == "__main__":
     wake_apps()

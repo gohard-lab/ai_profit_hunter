@@ -9,21 +9,18 @@ jobs:
   ping_apps:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Multiple URLs
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          
+      - name: Setup Python & Install Dependencies
+        run: uv pip install --system -r pyproject.toml
+        
+      # sc 폴더로 이동한 뒤 봇을 실행합니다.
+      - name: Run Headless Browser Script
         run: |
-          urls=(
-            "https://carcostsimulator-e9prevei4pq9cap535vfp8.streamlit.app/"
-            "https://drivingdashboard-t8exrwypqvsce3gdq3cksd.streamlit.app/"
-            "https://f1-race-analyzer-9pbapphbkgmo6rguympwshf.streamlit.app/"
-            "https://kcarcrawler-5ryuwuw8izgjmqphppweyv.streamlit.app/"
-            "https://schoolzonefinesim.streamlit.app/"
-            "https://cheiridrivingdashboard-cgpdknof3nnvufwaeyzkhr.streamlit.app/"
-          )
-
-          for url in "${urls[@]}"; do
-            echo "Pinging $url..."
-            # -c, -b 옵션으로 쿠키를 저장하고 읽어옵니다. 
-            # -A 옵션으로 실제 윈도우 크롬 브라우저처럼 보이게 위장합니다.
-            curl -c cookies.txt -b cookies.txt -L -s -o /dev/null -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" -w "Result Code: %{http_code}" "$url"
-            echo -e "\n---"
-          done
+          cd sc
+          python keep_awake_bot.py

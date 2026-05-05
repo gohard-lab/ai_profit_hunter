@@ -2,12 +2,15 @@ name: Wake Up All Apps
 
 on:
   schedule:
-    - cron: '0 * * * *' # 매 시간 정각 실행
+    - cron: '0 * * * *' # 매 시간 정각에 실행
   workflow_dispatch:
 
 jobs:
   ping_apps:
     runs-on: ubuntu-latest
+    env:
+      # Node.js 20 경고 해결을 위한 환경 변수 추가
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
     steps:
       - uses: actions/checkout@v4
       
@@ -19,8 +22,16 @@ jobs:
       - name: Setup Python & Install Dependencies
         run: uv pip install --system -r pyproject.toml
         
-      # sc 폴더로 이동한 뒤 봇을 실행합니다.
       - name: Run Headless Browser Script
         run: |
+          echo "현재 위치의 파일 목록:"
+          ls -al
+          
+          echo "sc 폴더로 이동:"
           cd sc
+          
+          echo "sc 폴더 안의 파일 목록:"
+          ls -al
+          
+          # 주의: 실제 파이썬 파일명과 아래 이름이 정확히 일치해야 합니다!
           python keep_awake_bot.py

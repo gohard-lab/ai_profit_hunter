@@ -28,7 +28,7 @@ jobs:
           ls -al
           
           echo "sc 폴더로 이동:"
-          cd sc
+          cd src
           
           echo "sc 폴더 안의 파일 목록:"
           ls -al

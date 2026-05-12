@@ -89,7 +89,7 @@ def get_latest_videos():
         channelId=YOUTUBE_CHANNEL_ID,
         part="snippet",
         order="date",
-        maxResults=20,
+        maxResults=50,
         type="video"
     )
     response = request.execute()

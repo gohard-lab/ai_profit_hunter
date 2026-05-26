@@ -35,7 +35,13 @@ SUBNET_ID = "ocid1.subnet.oc1.phx.aaaaaaaa4mkbwqc4y7sd5d54a7kdvdkoizqcikdz7pq5c4
 IMAGE_ID = "ocid1.image.oc1.phx.aaaaaaaa6m3airkzbr4zy6t3paptakqvluxgsqmgw45li3jfzwcbog2ginva"
 AD_NAME = "HrRu:PHX-AD-2"
 
-compute_client = oci.core.ComputeClient(config)
+# ====== [수정 포인트 1: 타임아웃 내장 설정 추가] ======
+sdk_config = oci.config.validate_config(config)
+client_config = oci.client_config.ClientConfiguration()
+client_config.timeout = (30, 90)  # (연결 타임아웃 30초, 읽기 타임아웃 90초로 확장)
+
+# 설정을 반영하여 클라이언트 재선언
+compute_client = oci.core.ComputeClient(config, client_configuration=client_config)
 
 def send_telegram_msg(message):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
@@ -60,14 +66,19 @@ def attempt_provisioning():
         
         instance_id = response.data.id
         log_app_usage("oci_hunter", "provision_success", details={"status": "success", "instance_id": instance_id})
-        
         send_telegram_msg("🎯 찾기 성공 OCI Ampere Instance!")
-        
         return True
+
+    # ====== [수정 포인트 2: 타임아웃 및 네트워크 예외 처리 추가] ======
+    except oci.exceptions.RequestException as network_err:
+        # 10초 타임아웃으로 인해 튕기던 에러를 여기서 안전하게 잡아냅니다.
+        log_app_usage("oci_hunter", "provision_timeout", details={"error": str(network_err)})
+        print(f"⚠️ [네트워크/타임아웃 오류] OCI 서버 응답 지연 발생 (재시도 예정)")
+        return False
+
     except oci.exceptions.ServiceError as e:
         log_app_usage("oci_hunter", "provision_retry", details={"error_code": e.code, "message": e.message})
         print(f"Retry: {e.message}")
-        
         return False
 
 if __name__ == "__main__":

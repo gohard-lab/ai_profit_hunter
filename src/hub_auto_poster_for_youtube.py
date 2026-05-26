@@ -176,17 +176,47 @@ def post_to_wordpress(title, description, video_id):
             allow_redirects=False
         )
 
-        if res.status_code not in [201, 301, 302]:
+        # ✅ 수정 포인트: 외부 함수 대신 Supabase 클라이언트를 직접 제어하여 로그 인서트
+        if res.status_code in [201, 301, 302]:
+            print(f"✅ [전송 성공] {title}")
+            supabase.table("usage_logs").insert({
+                "app_name": "youtube_hub_sync",
+                "content_id": video_id,
+                "action": "wp_post_success",
+                "details": {"title": title, "source": "youtube"}
+            }).execute()
+            return True
+        else:
             print(f"DEBUG WP Error: {res.status_code} - {res.text}")
+            # 워드프레스 포스팅 실패 시에도 원인 추적을 위해 실패 로그를 직접 적재
+            supabase.table("usage_logs").insert({
+                "app_name": "youtube_hub_sync",
+                "content_id": video_id,
+                "action": "wp_post_failed",
+                "details": {
+                    "title": title, 
+                    "source": "youtube", 
+                    "status_code": res.status_code, 
+                    "response_text": res.text[:200]  # 에러 사유 추적용
+                }
+            }).execute()
             return False
         
-        return True
-
     except Exception as e:
         print(f" ❌ 데이터 구성 또는 API 호출 중 에러 발생: {e}")
+        # 예외 상황 발생 시 로그 적재
+        try:
+            supabase.table("usage_logs").insert({
+                "app_name": "youtube_hub_sync",
+                "content_id": video_id,
+                "action": "wp_post_exception",
+                "details": {"title": title, "source": "youtube", "error_message": str(e)}
+            }).execute()
+        except Exception as db_err:
+            print(f" 🔥 Supabase 로깅 자체 에러 발생: {db_err}")
         return False
     finally:
-        session.close()     
+        session.close()
 
 def main():
     print(f"[{datetime.now()}] Starting YouTube Hub Sync...")

@@ -3,7 +3,6 @@ import time
 import os
 import sys
 import requests
-from oci.client_config import ClientConfiguration  # ✅ 검증된 공식 패키지 경로
 from dotenv import load_dotenv
 
 # 트래커 임포트를 위해 src 폴더도 인식하게 만듭니다.
@@ -36,14 +35,7 @@ SUBNET_ID = "ocid1.subnet.oc1.phx.aaaaaaaa4mkbwqc4y7sd5d54a7kdvdkoizqcikdz7pq5c4
 IMAGE_ID = "ocid1.image.oc1.phx.aaaaaaaa6m3airkzbr4zy6t3paptakqvluxgsqmgw45li3jfzwcbog2ginva"
 AD_NAME = "HrRu:PHX-AD-2"
 
-# ====== [수정 포인트 1: 타임아웃 내장 설정 추가] ======
-sdk_config = oci.config.validate_config(config)
-# ✅ 최종 수정 코드
-client_config = ClientConfiguration()
-client_config.timeout = (30, 90)  # (연결 30초, 읽기 90초)
-
-# 설정을 반영하여 Compute 클라이언트 생성
-compute_client = oci.core.ComputeClient(config, client_configuration=client_config)
+compute_client = oci.core.ComputeClient(config)
 
 def send_telegram_msg(message):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:

@@ -3,6 +3,7 @@ import time
 import os
 import sys
 import requests
+from oci.client_config import ClientConfiguration  # ✅ 검증된 공식 패키지 경로
 from dotenv import load_dotenv
 
 # 트래커 임포트를 위해 src 폴더도 인식하게 만듭니다.
@@ -37,8 +38,8 @@ AD_NAME = "HrRu:PHX-AD-2"
 
 # ====== [수정 포인트 1: 타임아웃 내장 설정 추가] ======
 sdk_config = oci.config.validate_config(config)
-# ✅ 최종 수정 코드: oci 내부의 config 패키지를 직접 이용합니다.
-client_config = oci.config.ClientConfiguration()
+# ✅ 최종 수정 코드
+client_config = ClientConfiguration()
 client_config.timeout = (30, 90)  # (연결 30초, 읽기 90초)
 
 # 설정을 반영하여 Compute 클라이언트 생성

@@ -4,8 +4,9 @@ def generate_blog_post(api_key, title, content):
     """뉴스 본문을 기반으로 고품질 블로그 포스팅을 생성합니다."""
     # 제미나이 API 키 세팅
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
+    # model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel(model_name='models/gemini-1.5-flash')
+
     prompt = f"""
     당신은 IT 및 경제 전문 블로거입니다. 아래 뉴스를 바탕으로 독자에게 통찰력을 주는 블로그 글을 HTML 형식으로 작성하세요.
     

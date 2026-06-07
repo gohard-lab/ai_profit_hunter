@@ -9,6 +9,7 @@ import urllib.parse
 import json
 import feedparser
 import urllib3
+import feedparser
 import google.generativeai as genai
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -164,7 +165,16 @@ def fetch_news_by_topic(topic_name, search_query):
     print(f"🚀 [{topic_name}] 주제로 기사 수집 중...")
     
     # 2. 뉴스 수집
-    if topic_name in RSS_FEEDS:
+    if topic_name == "F1_모터스포츠":  # 💡 F1 전용 RSS 하이패스 추가
+        news_items = []
+        feed = feedparser.parse("https://www.motorsport.com/rss/f1/news/")
+        for entry in feed.entries[:10]:
+            news_items.append({
+                "title": entry.title,
+                "link": entry.link,
+                "summary": entry.description if hasattr(entry, 'description') else ""
+            })
+    elif topic_name in RSS_FEEDS:
         news_items = []
         for rss_url in RSS_FEEDS[topic_name]:
             news_items.extend(fetch_direct_rss(rss_url))
@@ -189,6 +199,11 @@ def fetch_news_by_topic(topic_name, search_query):
         if is_already_posted(real_url):
             print(f"   ⏩ [중복 패스] 이미 발행된 기사입니다: {title[:30]}...")
             continue 
+
+        # 💡 핵심 수정 포인트: RSS에서 요약본을 가져온 상태라면, 봇 차단을 피하기 위해 크롤링 건너뜀!
+        if item.get('summary'):
+            print(f"  ✅ RSS 요약본 추출 성공! (봇 차단 우회 완료)")
+            return title, item['summary'][:1500], real_url, None
             
         print(f"👉 새 기사 본문 추출 시도 중: {title[:40]}...")
         

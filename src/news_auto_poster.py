@@ -376,7 +376,7 @@ if __name__ == "__main__":
             final_text, g_slug = rewrite_with_gpt(n_title, n_content, n_link, base_prompt)
 
             if not final_text:
-                print(f"⚠️ [{keyword}] GPT 가공 실패. 건너뜁니다.")
+                print(f"⚠️ [{keyword}] GEMINI 가공 실패. 건너뜁니다.")
                 continue
             
             # 마크다운 -> HTML 변환
@@ -443,7 +443,7 @@ if __name__ == "__main__":
             final_text, g_slug = rewrite_with_gpt(n_title, n_content, n_link, base_prompt)
 
             if not final_text:
-                print(f"⚠️ [{topic_name}] GPT 가공 실패. 건너뜁니다.")
+                print(f"⚠️ [{topic_name}] GEMINI 가공 실패. 건너뜁니다.")
                 continue
             
             print("🔄 HTML 변환 및 워드프레스 전송 준비...")

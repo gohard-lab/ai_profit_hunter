@@ -248,7 +248,7 @@ def rewrite_with_gpt(original_title, original_content, original_link, topic_prom
     try:
         # --- 기존 OpenAI 호출 부분 삭제 후 아래 코드로 교체 ---
         genai.configure(api_key=GEMINI_API_KEY) # 환경변수 설정에 맞게 변경
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        model = genai.GenerativeModel('gemini-pro')
 
         response = model.generate_content(
             prompt, # 기존 코드에서 사용하던 프롬프트 변수명과 맞춰주세요

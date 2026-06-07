@@ -4,7 +4,7 @@ import google.generativeai as genai
 genai.configure(api_key="AIzaSyDIQV-1U0cDtr2r5SUX70UgxUz9sc3CLk4")
 
 try:
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-pro')
     response = model.generate_content("안녕? 넌 누구니? 짧게 답해줘.")
     print("✅ 성공! 제미나이 키가 맞습니다. 답변:", response.text)
 except Exception as e:

@@ -7,6 +7,10 @@ on:
     - cron: '0 */3 * * *' 
   workflow_dispatch:
 
+# 💡 깃허브 액션 러너 전체에 Node.js 24 버전을 강제로 적용하여 경고를 제거합니다.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   run-bot:
     runs-on: ubuntu-latest

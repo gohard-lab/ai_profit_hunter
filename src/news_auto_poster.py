@@ -23,8 +23,11 @@ from newspaper import Article, Config # Config 추가
 
 # --- [설정 정보] ---
 load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 WP_URL = "https://gohard.pe.kr/index.php?rest_route=/wp/v2/posts/"
+
 # 수정 제안: 뒤에 붙은 'posts/'를 떼고 기본 경로만 설정
 # 이렇게 해두면 봇이 자동으로 뒤에 /posts를 붙여서 .../wp/v2/posts로 완성해 줌.
 # WP_URL = "https://gohard.pe.kr/index.php?rest_route=/wp/v2"
@@ -35,7 +38,7 @@ WP_APP_PASS = os.getenv("WP_APP_PASS")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+# client = OpenAI(api_key=OPENAI_API_KEY)
 
 # 종합뉴스 카테고리 ID
 TOTAL_NEWS_CAT_ID = 47
@@ -244,7 +247,7 @@ def rewrite_with_gpt(original_title, original_content, original_link, topic_prom
     
     try:
         # --- 기존 OpenAI 호출 부분 삭제 후 아래 코드로 교체 ---
-        genai.configure(api_key=API_CONFIG["gemini_api_key"]) # 환경변수 설정에 맞게 변경
+        genai.configure(api_key=GEMINI_API_KEY) # 환경변수 설정에 맞게 변경
         model = genai.GenerativeModel('gemini-1.5-flash')
 
         response = model.generate_content(

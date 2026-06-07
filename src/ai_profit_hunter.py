@@ -3,6 +3,7 @@ import requests
 import time
 import json
 import random
+import google.generativeai as genai
 from datetime import datetime
 from dotenv import load_dotenv
 from tracker_exe import log_app_usage
@@ -91,22 +92,21 @@ def ai_summarize_and_analyze(title):
     }}
     """
     
-    headers = {"Authorization": f"Bearer {openai_api_key}", "Content-Type": "application/json"}
-    data = {
-        "model": "gpt-4o-mini", # 가성비와 속도가 좋은 mini 모델 추천
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.5
-    }
-    
     try:
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
-        
+        genai.configure(api_key=API_CONFIG["gemini_api_key"]) # 또는 os.getenv("GEMINI_API_KEY")
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(temperature=0.7)
+        )
+        # 결과를 반환하는 변수에 맞게 response.text.strip() 을 넘겨줍니다.
+
         # API 응답 상태 확인
         if response.status_code != 200:
             print(f"⚠️ OpenAI API 호출 실패 (Status: {response.status_code})")
             return None
             
-        result_json = response.json()
+        result_json = response.text.strip().json()
         
         # 'choices' 키가 있는지 안전하게 확인
         if 'choices' not in result_json:

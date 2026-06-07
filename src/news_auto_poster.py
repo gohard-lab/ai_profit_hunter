@@ -9,6 +9,7 @@ import urllib.parse
 import json
 import feedparser
 import urllib3
+import google.generativeai as genai
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from newspaper import Article
@@ -242,15 +243,31 @@ def rewrite_with_gpt(original_title, original_content, original_link, topic_prom
     """
     
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            response_format={ "type": "json_object" },
-            messages=[{"role": "user", "content": prompt}]
+        # --- 기존 OpenAI 호출 부분 삭제 후 아래 코드로 교체 ---
+        genai.configure(api_key=API_CONFIG["gemini_api_key"]) # 환경변수 설정에 맞게 변경
+        model = genai.GenerativeModel('gemini-1.5-flash')
+
+        response = model.generate_content(
+            prompt, # 기존 코드에서 사용하던 프롬프트 변수명과 맞춰주세요
+            generation_config=genai.types.GenerationConfig(temperature=0.7)
         )
-        result = json.loads(response.choices[0].message.content)
+        # 결과를 반환하거나 변수에 담는 부분
+        # 예: processed_content = response.text.strip()
+
+
+        # response = client.chat.completions.create(
+        #     model="gpt-4o",
+        #     response_format={ "type": "json_object" },
+        #     messages=[{"role": "user", "content": prompt}]
+        # )
+
+        clean_text = response.text.replace("```json", "").replace("```", "").strip()
+        result = json.loads(clean_text)
+                
         return result.get("content", ""), result.get("slug", "")
+    
     except Exception as e:
-        print(f"❌ GPT 재가공 중 에러 발생: {e}")
+        print(f"❌ Gemini 재가공 중 에러 발생: {e}")
         return None, None
     
 def upload_image_to_wp(image_url):

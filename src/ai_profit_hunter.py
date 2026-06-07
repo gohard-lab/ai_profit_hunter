@@ -20,6 +20,7 @@ load_dotenv()
 API_CONFIG = {
     "news_api_key": os.getenv("NEWS_API_KEY"),
     "openai_api_key": os.getenv("OPENAI_API_KEY"),
+    "gemini_api_key": os.getenv("GEMINI_API_KEY"),
     "telegram_token": os.getenv("TELEGRAM_TOKEN"),
     "chat_id": os.getenv("CHAT_ID"),
     "supabase_url": os.getenv("SUPABASE_URL"),
@@ -155,7 +156,7 @@ def run_profit_bot():
             
             if full_text:
                 # SEO 블로그 포스팅 내용 생성
-                blog_html = generate_blog_post(API_CONFIG["openai_api_key"], article['title'], full_text)
+                blog_html = generate_blog_post(API_CONFIG["gemini_api_key"], article['title'], full_text)
                 
                 if blog_html:
                     # 타겟 키워드에 따라 워드프레스 카테고리 지정

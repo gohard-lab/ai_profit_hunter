@@ -95,7 +95,7 @@ def ai_summarize_and_analyze(title):
     try:
         genai.configure(api_key=API_CONFIG["gemini_api_key"]) # 또는 os.getenv("GEMINI_API_KEY")
         # model = genai.GenerativeModel('gemini-1.5-flash')
-        model = genai.GenerativeModel(model_name='models/gemini-2.0-flash-exp')
+        model = genai.GenerativeModel(model_name='models/gemini-flash-latest')
         response = model.generate_content(
             prompt,
             generation_config=genai.types.GenerationConfig(temperature=0.7)

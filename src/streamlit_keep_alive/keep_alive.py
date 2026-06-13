@@ -10,7 +10,7 @@ STREAMLIT_APPS = [
     "https://schoolzonefinesim.streamlit.app/",
     "https://cheiridrivingdashboard-cgpdknof3nnvufwaeyzkhr.streamlit.app/",
     "https://quattrosimulator-kbsulzwvq8ucrcpph6rfg5.streamlit.app/",
-    "https://aitextdetector-lhbmnzgpagsda9nebjhpuj.streamlit.app/",
+    "https://aitextdetector-lhbmnzgpagsda9nebjhpuj.streamlit.app/"    
     # 여기에 운영 중인 다른 URL들을 추가하세요
 ]
 

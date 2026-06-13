@@ -1,4 +1,5 @@
 import requests
+import time
 from datetime import datetime
 
 # 깨우고 싶은 Streamlit 앱 주소들을 리스트에 넣으세요
@@ -10,7 +11,7 @@ STREAMLIT_APPS = [
     "https://schoolzonefinesim.streamlit.app/",
     "https://cheiridrivingdashboard-cgpdknof3nnvufwaeyzkhr.streamlit.app/",
     "https://quattrosimulator-kbsulzwvq8ucrcpph6rfg5.streamlit.app/",
-    "https://aitextdetector-lhbmnzgpagsda9nebjhpuj.streamlit.app/"    
+    "https://aitextdetector-lhbmnzgpagsda9nebjhpuj.streamlit.app/",    
     # 여기에 운영 중인 다른 URL들을 추가하세요
 ]
 
@@ -28,8 +29,11 @@ def wake_up_apps():
 
     for url in STREAMLIT_APPS:
         try:
-            response = requests.get(url, headers=headers, timeout=15)
-            
+            # 💡 URL 뒤에 찌를 때마다 바뀌는 가짜 파라미터(?ping=시간)를 달아서 무조건 새로고침 시킴
+            bypass_cache_url = f"{url}?ping={int(time.time())}"
+
+            response = requests.get(bypass_cache_url, headers=headers, timeout=60)
+
             if response.status_code == 200:
                 # 응답받은 HTML 텍스트 안에 수면 상태를 의미하는 키워드가 있는지 검사
                 if "This app has gone to sleep" in response.text or "Zzzz" in response.text:

@@ -59,24 +59,24 @@ def attempt_provisioning():
         response = compute_client.launch_instance(instance_details)
         
         instance_id = response.data.id
-        log_app_usage("oci_hunter", "provision_success", details={"status": "success", "instance_id": instance_id})
+        # log_app_usage("oci_hunter", "provision_success", details={"status": "success", "instance_id": instance_id})
         send_telegram_msg("🎯 찾기 성공 OCI Ampere Instance!")
         return True
 
     # ====== [수정 포인트 2: 타임아웃 및 네트워크 예외 처리 추가] ======
     except oci.exceptions.RequestException as network_err:
         # 10초 타임아웃으로 인해 튕기던 에러를 여기서 안전하게 잡아냅니다.
-        log_app_usage("oci_hunter", "provision_timeout", details={"error": str(network_err)})
+        # log_app_usage("oci_hunter", "provision_timeout", details={"error": str(network_err)})
         print(f"⚠️ [네트워크/타임아웃 오류] OCI 서버 응답 지연 발생 (재시도 예정)")
         return False
 
     except oci.exceptions.ServiceError as e:
-        log_app_usage("oci_hunter", "provision_retry", details={"error_code": e.code, "message": e.message})
+        # log_app_usage("oci_hunter", "provision_retry", details={"error_code": e.code, "message": e.message})
         print(f"Retry: {e.message}")
         return False
 
 if __name__ == "__main__":
-    log_app_usage("oci_hunter", "app_opened")
+    # log_app_usage("oci_hunter", "app_opened")
     try:
         # 무한 반복 생성 요청 (자리가 날 때까지)
         while not attempt_provisioning():

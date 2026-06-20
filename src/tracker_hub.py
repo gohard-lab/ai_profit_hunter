@@ -8,6 +8,15 @@ from streamlit_javascript import st_javascript
 from datetime import datetime, timezone
 
 
+# 💡 [SMART PATCH] Prevent crash in pure backend environments where streamlit is missing
+try:
+    import streamlit as st
+    from streamlit_javascript import st_javascript
+except ModuleNotFoundError:
+    st = None
+    st_javascript = None
+
+
 @st.cache_resource
 def get_supabase_client():
     try:
@@ -24,6 +33,10 @@ def get_supabase_client():
 
 
 def get_real_client_ip():
+    # Return immediately if running in a non-streamlit environment
+    if st is None:
+        return "Unknown"
+    
     """Extract real client IP prioritizing Streamlit context headers to minimize 'Unknown' location metrics."""
     # 1. Try extracting from X-Forwarded-For header (Streamlit Cloud Proxy environment)
     if hasattr(st, "context") and st.context.headers:

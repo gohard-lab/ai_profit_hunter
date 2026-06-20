@@ -34,6 +34,7 @@ dependencies = [
     { name = "requests" },
     { name = "selenium" },
     { name = "streamlit" },
+    { name = "streamlit-javascript" },
     { name = "supabase" },
     { name = "webdriver-manager" },
 ]
@@ -55,6 +56,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.33.1" },
     { name = "selenium", specifier = ">=4.18.0" },
     { name = "streamlit", specifier = ">=1.58.0" },
+    { name = "streamlit-javascript", specifier = ">=0.1.5" },
     { name = "supabase", specifier = ">=2.28.3" },
     { name = "webdriver-manager", specifier = ">=4.0.0" },
 ]
@@ -3461,6 +3463,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/91/74/20dac6d6200d6ec0e1c230fb8eeb6a1a423645eacb76e8d802adfc246456/streamlit-1.58.0.tar.gz", hash = "sha256:78a22e7085b053af7ce544442bf4b670771e68c509ba1bdaa056ba0708f49c3d", size = 8721149, upload-time = "2026-05-28T18:02:44.606Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/df/84/14c36a92fb24f8e1cea452f53b0744b5da69d52cdd2fe22e71e6fbf765d5/streamlit-1.58.0-py3-none-any.whl", hash = "sha256:4ca8a7afc5bd16a5f176ccf4be1e34e8121cad0240becd127fb58a103ea3178d", size = 9219185, upload-time = "2026-05-28T18:02:41.993Z" },
+]
+
+[[package]]
+name = "streamlit-javascript"
+version = "0.1.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "streamlit" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a5/69/723ebc7a58057b1e6f54d0c23c86488054d756e0e470daf4db703fe02a63/streamlit-javascript-0.1.5.tar.gz", hash = "sha256:9da5176522a0acf2c39d3b0bec9f856fdd8ea3c70bb1066841a546ab1348ae1d", size = 512374, upload-time = "2022-05-13T07:48:47.802Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/87/81/0c9e9e4d2dab97224efe105ba44f47b259f37d8e7673b94f5b5523fe2c8f/streamlit_javascript-0.1.5-py3-none-any.whl", hash = "sha256:36ca4d8c46fd5b6526d1a705530472e03cb6e5bb24694330649f21d5c436d280", size = 518387, upload-time = "2022-05-13T07:48:45.406Z" },
 ]
 
 [[package]]

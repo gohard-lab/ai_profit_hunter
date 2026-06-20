@@ -22,4 +22,5 @@ dependencies = [
     "webdriver-manager>=4.0.0",
     "google-generativeai>=0.8.6",
     "streamlit>=1.58.0",
+    "streamlit-javascript>=0.1.5",
 ]

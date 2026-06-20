@@ -20,9 +20,11 @@ def wake_up_apps():
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{now}] Streamlit 앱 수면 방지 Ping 작업 시작...")
 
+    # Modified headers to include a unique identifiable signature for tracker blocking
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) PolymathKeepAliveBot/1.0"
     }
+
 
     for url in STREAMLIT_APPS:
         try:

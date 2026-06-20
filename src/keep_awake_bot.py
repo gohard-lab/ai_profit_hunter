@@ -6,7 +6,7 @@ import time
 
 # 요청하신 데이터 트래커 연동 (웹용)
 try:
-    from tracker_web import log_app_usage
+    from tracker_hub import log_app_usage
     log_app_usage("github_actions_bot", "keep_awake_run")
 except ImportError:
     pass

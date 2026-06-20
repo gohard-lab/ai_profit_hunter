@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 # 트래커 임포트를 위해 src 폴더도 인식하게 만듭니다.
 sys.path.append("/home/ubuntu/AI_profit_hunter/src")
-from tracker_exe import log_app_usage 
+from tracker_hub import log_app_usage 
 
 load_dotenv()
 

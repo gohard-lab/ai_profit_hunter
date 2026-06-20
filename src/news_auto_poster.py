@@ -19,7 +19,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 from news_provider import fetch_naver_news, fetch_direct_rss, RSS_FEEDS
-from tracker_exe import log_app_usage 
+from tracker_hub import log_app_usage 
 from newspaper import Article, Config # Config 추가
 
 # --- [설정 정보] ---

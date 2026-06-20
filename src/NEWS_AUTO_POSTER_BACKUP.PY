@@ -13,10 +13,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 from news_provider import fetch_naver_news, fetch_direct_rss, RSS_FEEDS
-from tracker_exe import log_app_usage
-
-# 백그라운드 봇 환경이므로 exe용 트래커를 사용합니다.
-from tracker_exe import log_app_usage 
+from tracker_hub import log_app_usage
 
 # --- [설정 정보] ---
 load_dotenv()

@@ -6,7 +6,7 @@ import random
 import google.generativeai as genai
 from datetime import datetime
 from dotenv import load_dotenv
-from tracker_exe import log_app_usage
+from tracker_hub import log_app_usage
 from supabase import create_client
 
 # 새로 만든 모듈들 (같은 src 폴더 내에 있어야 합니다)
@@ -130,7 +130,7 @@ def post_to_telegram(message):
     requests.post(url, data={"chat_id": API_CONFIG["chat_id"], "text": message})
 
 def run_profit_bot():
-    log_app_usage("ai_profit_bot", "engine_started")
+    log_app_usage("ai_profit_hunter", "engine_started")
     hunting_keywords = ["정치", "경제", "사회", "IT 트렌드"]
     
     for target_keyword in hunting_keywords:

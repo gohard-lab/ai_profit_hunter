@@ -22,9 +22,8 @@ def wake_up_apps():
 
     # Modified headers to include a unique identifiable signature for tracker blocking
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) PolymathKeepAliveBot/1.0"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Polymath-Engine-Ping/1.0"
     }
-
 
     for url in STREAMLIT_APPS:
         try:

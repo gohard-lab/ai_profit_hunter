@@ -12,8 +12,7 @@ STREAMLIT_APPS = [
     "https://cheiridrivingdashboard-cgpdknof3nnvufwaeyzkhr.streamlit.app/",
     "https://quattrosimulator-kbsulzwvq8ucrcpph6rfg5.streamlit.app/",
     "https://aitextdetector-lhbmnzgpagsda9nebjhpuj.streamlit.app/",
-    "https://pwnedcredentialchecker-hmugyj9xsfalvzvrn4bfxi.streamlit.app/",
-    # 여기에 운영 중인 다른 URL들을 추가하세요
+    "https://pwnedcredentialchecker-hmugyj9xsfalvzvrn4bfxi.streamlit.app/"  # 여기에 운영 중인 다른 URL들을 추가하세요
 ]
 
 def wake_up_apps():

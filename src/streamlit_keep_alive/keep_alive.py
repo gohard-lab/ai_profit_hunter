@@ -4,16 +4,16 @@ from datetime import datetime
 
 # 깨우고 싶은 Streamlit 앱 주소들을 리스트에 넣으세요
 STREAMLIT_APPS = [
+    "https://quattrosimulator-kbsulzwvq8ucrcpph6rfg5.streamlit.app/",
+    "https://aitextdetector-lhbmnzgpagsda9nebjhpuj.streamlit.app/",
+    "https://faceswapdefender-8vnc2kab6pxahang3yuaqb.streamlit.app/",
+    "https://pwnedcredentialchecker-hmugyj9xsfalvzvrn4bfxi.streamlit.app/",  # 여기에 운영 중인 다른 URL들을 추가하세요
     "https://carcostsimulator-e9prevei4pq9cap535vfp8.streamlit.app/",
     "https://drivingdashboard-t8exrwypqvsce3gdq3cksd.streamlit.app/",
     "https://f1-race-analyzer-9pbapphbkgmo6rguympwshf.streamlit.app/",
     "https://kcarcrawler-5ryuwuw8izgjmqphppweyv.streamlit.app/",
     "https://schoolzonefinesim.streamlit.app/",
     "https://cheiridrivingdashboard-cgpdknof3nnvufwaeyzkhr.streamlit.app/",
-    "https://quattrosimulator-kbsulzwvq8ucrcpph6rfg5.streamlit.app/",
-    "https://aitextdetector-lhbmnzgpagsda9nebjhpuj.streamlit.app/",
-    "https://faceswapdefender-8vnc2kab6pxahang3yuaqb.streamlit.app/",
-    "https://pwnedcredentialchecker-hmugyj9xsfalvzvrn4bfxi.streamlit.app/",  # 여기에 운영 중인 다른 URL들을 추가하세요
 ]
 
 def wake_up_apps():

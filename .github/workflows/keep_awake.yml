@@ -2,7 +2,7 @@ name: Wake Up All Apps
 
 on:
   schedule:
-    - cron: '0 */2 * * *' # 매 시간 정각에 실행
+    - cron: '0 */8 * * *' # 8시간마다 정각에 실행 (한국 시간 기준 09:00, 17:00, 01:00)
     
   workflow_dispatch:
 

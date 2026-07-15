@@ -33,4 +33,4 @@ jobs:
           cd src
           
           # 3. uv run 명령어를 사용하면 가상 환경의 파이썬으로 알아서 봇을 실행해 줍니다.
-          uv run keep_awake_bot.py
+          uv run keep_alive.py

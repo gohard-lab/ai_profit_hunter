@@ -28,9 +28,7 @@ jobs:
           uv pip install -r pyproject.toml
         
       - name: Run Headless Browser Script
+        working-directory: src
         run: |
-          echo "src 폴더로 이동:"
-          cd src
-          
-          # 3. uv run 명령어를 사용하면 가상 환경의 파이썬으로 알아서 봇을 실행해 줍니다.
-          uv run keep_alive.py
+          # 가상 환경의 파이썬 인터프리터로 스크립트를 명시적으로 실행합니다.
+          uv run python keep_alive.py

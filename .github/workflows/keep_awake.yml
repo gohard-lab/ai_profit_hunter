@@ -22,13 +22,17 @@ jobs:
           
       - name: Setup Python & Install Dependencies
         run: |
-          # 1. 시스템 영역 대신 우리만의 독립된 가상 환경을 만듭니다.
+          # 1. 프로젝트 독립 가상 환경 생성
           uv venv
-          # 2. --system 옵션을 빼고 가상 환경 안에 안전하게 패키지를 설치합니다.
-          uv pip install -r pyproject.toml
+          
+          # 2. pyproject.toml 의존성과 플레이라이트 패키지 동시 설치
+          uv pip install -r pyproject.toml playwright
+          
+          # 3. 가상 환경 내부의 플레이라이트 도구를 사용하여 크롬 바이너리 빌드
+          uv run playwright install chromium
         
       - name: Run Headless Browser Script
         working-directory: src
         run: |
-          # 가상 환경의 파이썬 인터프리터로 스크립트를 명시적으로 실행합니다.
+          # 가상 환경 파이썬 인터프리터를 통한 스크립트 구동
           uv run python keep_alive.py

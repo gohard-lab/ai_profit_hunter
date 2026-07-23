@@ -6,7 +6,7 @@ from playwright.sync_api import sync_playwright
 STREAMLIT_APPS = [
     "https://quattrosimulator-kbsulzwvq8ucrcpph6rfg5.streamlit.app/",
     "https://aitextdetector-lhbmnzgpagsda9nebjhpuj.streamlit.app/",
-    "https://faceswapdefender-8vnc2kab6pxahang3yuaqb.streamlit.app/",
+    "https://faceswapdefender-upsnzcakgyfsgtdhuw4c5n.streamlit.app/", 
     "https://pwnedcredentialchecker-hmugyj9xsfalvzvrn4bfxi.streamlit.app/",
     "https://carcostsimulator-e9prevei4pq9cap535vfp8.streamlit.app/",
     "https://drivingdashboard-t8exrwypqvsce3gdq3cksd.streamlit.app/",
@@ -14,6 +14,7 @@ STREAMLIT_APPS = [
     "https://kcarcrawler-5ryuwuw8izgjmqphppweyv.streamlit.app/",
     "https://schoolzonefinesim-jamadbprromvbbwwzhgeui.streamlit.app/",
     "https://cheiridrivingdashboard-cgpdknof3nnvufwaeyzkhr.streamlit.app/",
+    "https://tapewaveformanalyzer-94v6hmwzuzzsvbse3qmdxe.streamlit.app/",
 ]
 
 def wake_up_apps():

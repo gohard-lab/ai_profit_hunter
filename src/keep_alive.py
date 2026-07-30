@@ -16,6 +16,7 @@ STREAMLIT_APPS = [
     "https://cheiridrivingdashboard-cgpdknof3nnvufwaeyzkhr.streamlit.app/",
     "https://tapewaveformanalyzer-94v6hmwzuzzsvbse3qmdxe.streamlit.app/",
     "https://voicefrequencyanalyzer-67zfryfptjxwdjofkymjyw.streamlit.app/",
+    "https://moviebepcalculator-77dp957j9snypavp86bgsb.streamlit.app/",
 ]
 
 def wake_up_apps():
